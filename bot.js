@@ -77,11 +77,11 @@ bot.on('document', async (msg) => {
     bot.sendMessage(chatId, '⏳ Procesando tu PDF...');
 
     // Descargar archivo
-    const file = await bot.getFile(fileId);
     const fileStream = bot.getFileStream(fileId);
 
-    // Guardar archivo temporalmente
-    const tempFile = path.join(__dirname, 'temp_upload.pdf');
+    // Guardar archivo temporalmente con nombre único
+    const uniqueId = crypto.randomBytes(8).toString('hex');
+    const tempFile = path.join(__dirname, `temp_${uniqueId}.pdf`);
     const writeStream = fs.createWriteStream(tempFile);
 
     fileStream.pipe(writeStream);
@@ -95,20 +95,20 @@ bot.on('document', async (msg) => {
       const finalFileName = `${hash}.pdf`;
       const finalPath = path.join(uploadDir, finalFileName);
 
-      // Mover archivo
+      // Mover archivo (sobrescribir si ya existe el mismo contenido)
       fs.renameSync(tempFile, finalPath);
 
-      // Generar URL
-      const pdfUrl = `${DOMAIN}/servicio/verCertificado/${finalFileName}`;
+      // Generar URL de visualización (nueva ruta)
+      const displayUrl = `${DOMAIN}/ver/${hash}`;
 
       // Generar QR
-      const qrPath = path.join(__dirname, 'temp_qr.png');
-      await QRCode.toFile(qrPath, pdfUrl, {
+      const qrPath = path.join(__dirname, `qr_${uniqueId}.png`);
+      await QRCode.toFile(qrPath, displayUrl, {
         color: {
-          dark: '#000',
-          light: '#fff'
+          dark: '#0f172a',
+          light: '#ffffff'
         },
-        width: 300,
+        width: 400,
         margin: 2
       });
 
@@ -116,15 +116,14 @@ bot.on('document', async (msg) => {
       await bot.sendPhoto(chatId, qrPath, {
         caption: 
           '✅ *Certificado procesado*\n\n' +
-          `📄 Archivo: \`${finalFileName}\`\n` +
-          `🔗 Link: \`${pdfUrl}\`\n` +
           `🔐 Hash: \`${hash}\`\n\n` +
-          '📱 Escanea el QR para descargar',
+          `🔗 Link de Verificación:\n${displayUrl}\n\n` +
+          '📱 Escanea el QR para visualizar el documento oficial.',
         parse_mode: 'Markdown'
       });
 
       // Limpiar temporal
-      fs.unlinkSync(qrPath);
+      if (fs.existsSync(qrPath)) fs.unlinkSync(qrPath);
 
       console.log(`✅ PDF procesado: ${finalFileName}`);
     });
@@ -139,6 +138,7 @@ bot.on('document', async (msg) => {
     console.error('Error:', error);
   }
 });
+
 
 // Manejo de errores
 bot.on('polling_error', (error) => {
