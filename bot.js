@@ -75,30 +75,36 @@ bot.on('document', async (msg) => {
 
     // Calcular Hash SHA-256
     const hash = crypto.createHash('sha256').update(pdfBuffer).digest('hex').toUpperCase();
-    const displayUrl = `${DOMAIN}/ver/${hash}`;
+    const displayUrl = `${DOMAIN}/verCertificado/${hash}`;
 
-    // Generar imagen QR en Buffer (Negro puro)
+    // Generar imagen QR en Buffer (Negro puro con margen blanco de 2mm)
     const qrImageBuffer = await QRCode.toBuffer(displayUrl, {
-      margin: 0,
+      margin: 2,
       width: 400,
       color: { dark: '#000000', light: '#ffffff' }
     });
 
-    // --- MAGIA: Editar PDF con pdf-lib ---
+    // --- MAGIA: Editar PDF con pdf-lib (Auto-ajustable) ---
     const pdfDoc = await PDFDocument.load(pdfBuffer);
     const pages = pdfDoc.getPages();
     const firstPage = pages[0];
+    const { width, height } = firstPage.getSize();
 
-    // Embeber la imagen del QR en el PDF
+    // Embeber la imagen del QR
     const qrImage = await pdfDoc.embedPng(qrImageBuffer);
     
-    // Dibujar el QR en la posición configurada
+    // Calcular posición basada en porcentajes (X desde izq, Y desde arriba)
+    const xPos = (QR_X / 100) * width;
+    const yPos = height - ((QR_Y / 100) * height) - QR_SIZE;
+
+    // Dibujar el QR
     firstPage.drawImage(qrImage, {
-      x: QR_X,
-      y: QR_Y,
+      x: xPos,
+      y: yPos,
       width: QR_SIZE,
       height: QR_SIZE,
     });
+
 
     // Guardar el PDF modificado
     const modifiedPdfBytes = await pdfDoc.save();
@@ -107,17 +113,22 @@ bot.on('document', async (msg) => {
 
     fs.writeFileSync(finalPath, modifiedPdfBytes);
 
-    // Enviar el PDF modificado de vuelta al usuario
-    await bot.sendDocument(chatId, finalPath, {
+    // 1. Enviar el código QR solo (como imagen)
+    await bot.sendPhoto(chatId, qrImageBuffer, {
       caption: 
-        '✅ *Certificado Listo*\n\n' +
-        `🔐 Hash: \`${hash}\`\n` +
-        `🔗 Link: ${displayUrl}\n\n` +
-        'El QR ha sido insertado en el documento.',
+        '🖼️ *Código QR Generado*\n' +
+        `🔗 Link: ${displayUrl}\n` +
+        `🔐 Hash: \`${hash}\``,
       parse_mode: 'Markdown'
     });
 
-    console.log(`✅ PDF Editado y Guardado: ${finalFileName}`);
+    // 2. Enviar el PDF modificado
+    await bot.sendDocument(chatId, finalPath, {
+      caption: '📄 *Certificado con QR integrado*',
+      parse_mode: 'Markdown'
+    });
+
+    console.log(`✅ QR y PDF enviados: ${finalFileName}`);
 
   } catch (error) {
     bot.sendMessage(chatId, `❌ Error: ${error.message}`);
