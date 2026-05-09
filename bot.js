@@ -9,11 +9,19 @@ require('dotenv').config();
 // Validar variables de entorno
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const DOMAIN = process.env.DOMAIN_URL || 'localhost:3000';
+const ADMIN_ID = process.env.ADMIN_ID;
 
 if (!BOT_TOKEN) {
   console.error('❌ Error: TELEGRAM_BOT_TOKEN no está definido en .env');
   process.exit(1);
 }
+
+// Función para verificar si el usuario es el administrador
+const isAuthorized = (msg) => {
+  if (!ADMIN_ID) return true; // Si no hay ADMIN_ID, permitir todo (por defecto)
+  const userId = msg.from.id.toString();
+  return userId === ADMIN_ID.toString();
+};
 
 // Crear bot
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
@@ -26,42 +34,46 @@ if (!fs.existsSync(uploadDir)) {
 
 console.log(`✅ Bot iniciado`);
 console.log(`📱 Token: ${BOT_TOKEN.substring(0, 10)}...`);
+console.log(`👤 Admin Autorizado: ${ADMIN_ID || 'Todos'}`);
 console.log(`🌐 Dominio: ${DOMAIN}`);
 
 // Comando /start
 bot.onText(/\/start/, (msg) => {
+  if (!isAuthorized(msg)) {
+    return bot.sendMessage(msg.chat.id, '🚫 Acceso denegado. Este bot es privado.');
+  }
+  
   const chatId = msg.chat.id;
   bot.sendMessage(chatId, 
-    '👋 ¡Hola! Soy tu bot de certificados.\n\n' +
+    '👋 ¡Hola! Soy tu bot privado de certificados.\n\n' +
     '📄 Envíame un PDF y te generaré:\n' +
     '✅ Hash SHA-256\n' +
-    '✅ QR de descarga\n\n' +
-    '📝 Comandos:\n' +
-    '/start - Mostrar este mensaje\n' +
-    '/help - Ayuda\n\n' +
-    '💡 Solo envía un archivo PDF'
+    '✅ QR de verificación\n\n' +
+    '💡 Solo tú puedes usar este bot.'
   );
 });
 
 // Comando /help
 bot.onText(/\/help/, (msg) => {
+  if (!isAuthorized(msg)) return;
+  
   const chatId = msg.chat.id;
   bot.sendMessage(chatId,
-    '📖 *Cómo usar el bot:*\n\n' +
+    '📖 *Ayuda Privada:*\n\n' +
     '1️⃣ Envía un PDF\n' +
-    '2️⃣ El bot lo procesará\n' +
-    '3️⃣ Recibirás un QR con el link de descarga\n\n' +
-    '🔒 *Seguridad:*\n' +
-    '- Cada PDF se renombra con SHA-256\n' +
-    '- Identificadores únicos por contenido\n' +
-    '- Los archivos se guardan en el servidor\n\n' +
-    '📞 Soporte: @tive_odiseabot',
+    '2️⃣ El bot lo renombra con SHA-256\n' +
+    '3️⃣ Recibirás un QR con el link oficial de tu web\n\n' +
+    '🔒 *Nota:* Nadie más tiene acceso a subir archivos aquí.',
     { parse_mode: 'Markdown' }
   );
 });
 
 // Procesar archivos PDF
 bot.on('document', async (msg) => {
+  if (!isAuthorized(msg)) {
+    return bot.sendMessage(msg.chat.id, '🚫 No tienes permiso para subir archivos aquí.');
+  }
+
   const chatId = msg.chat.id;
   const fileId = msg.document.file_id;
   const fileName = msg.document.file_name;
