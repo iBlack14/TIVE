@@ -1,12 +1,14 @@
 services:
-  app:
+  tive-bot:
     build: .
-    container_name: bot-certificados
-    ports:
-      - "3000:3000"
-    volumes:
-      # Carpeta de certificados persistente (Local Storage)
-      - ./servicio/verCertificado:/app/servicio/verCertificado
+    container_name: tive-bot
+    restart: always
     env_file:
       - .env
-    restart: always
+    volumes:
+      # PERSISTENCIA: Los archivos subidos se guardan en tu PC real
+      - ./servicio/verCertificado:/app/servicio/verCertificado
+      - ./tarjeta:/app/tarjeta
+      - ./logs:/app/logs
+    environment:
+      - NODE_ENV=production

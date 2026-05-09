@@ -1,11 +1,8 @@
 node_modules
+npm-debug.log
 .env
 .git
-.gitignore
-npm-debug.log
 servicio/verCertificado/*
-analisis_proyecto.md
 *.pdf
 *.png
-*.bat
-*.ps1
+*.jpg

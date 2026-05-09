@@ -42,7 +42,8 @@ function drawRealBarcode(page, text, x, y, width, height) {
 }
 
 async function extraerConIA(pdfBuffer) {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Usando el modelo 2.0 que confirmamos en el listado
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     const prompt = `Analiza este documento TIVE. Extrae datos y devuelve SOLO JSON con llaves exactas: zona, sede, partida, dua, titulo, fechaTitulo, placa, codVerif, tituloNo, fechaFinal, categoria, marca, modelo, color, añoModelo, version, vin, serie, motor, carroceria, potencia, formRod, combustible, asientos, pasajeros, ruedas, ejes, cilindros, longitud, altura, ancho, cilindrada, pBruto, pNeto, cargaUtil.`;
     const result = await model.generateContent([{ inlineData: { data: pdfBuffer.toString("base64"), mimeType: "application/pdf" } }, { text: prompt }]);
     return JSON.parse(result.response.text().replace(/```json|```/g, "").trim());
