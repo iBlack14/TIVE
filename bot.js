@@ -4,12 +4,18 @@ const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
+const { PDFDocument } = require('pdf-lib');
 require('dotenv').config();
 
 // Validar variables de entorno
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const DOMAIN = process.env.DOMAIN_URL || 'localhost:3000';
 const ADMIN_ID = process.env.ADMIN_ID;
+
+// Configuración QR en PDF
+const QR_X = parseInt(process.env.QR_X) || 450;
+const QR_Y = parseInt(process.env.QR_Y) || 50;
+const QR_SIZE = parseInt(process.env.QR_SIZE) || 100;
 
 if (!BOT_TOKEN) {
   console.error('❌ Error: TELEGRAM_BOT_TOKEN no está definido en .env');
@@ -18,7 +24,7 @@ if (!BOT_TOKEN) {
 
 // Función para verificar si el usuario es el administrador
 const isAuthorized = (msg) => {
-  if (!ADMIN_ID) return true; // Si no hay ADMIN_ID, permitir todo (por defecto)
+  if (!ADMIN_ID) return true; 
   const userId = msg.from.id.toString();
   return userId === ADMIN_ID.toString();
 };
@@ -33,117 +39,85 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 console.log(`✅ Bot iniciado`);
-console.log(`📱 Token: ${BOT_TOKEN.substring(0, 10)}...`);
 console.log(`👤 Admin Autorizado: ${ADMIN_ID || 'Todos'}`);
-console.log(`🌐 Dominio: ${DOMAIN}`);
+console.log(`📍 QR Posición: X:${QR_X}, Y:${QR_Y}, Size:${QR_SIZE}`);
 
 // Comando /start
 bot.onText(/\/start/, (msg) => {
   if (!isAuthorized(msg)) {
-    return bot.sendMessage(msg.chat.id, '🚫 Acceso denegado. Este bot es privado.');
+    return bot.sendMessage(msg.chat.id, '🚫 Acceso denegado.');
   }
-  
-  const chatId = msg.chat.id;
-  bot.sendMessage(chatId, 
-    '👋 ¡Hola! Soy tu bot privado de certificados.\n\n' +
-    '📄 Envíame un PDF y te generaré:\n' +
-    '✅ Hash SHA-256\n' +
-    '✅ QR de verificación\n\n' +
-    '💡 Solo tú puedes usar este bot.'
-  );
-});
-
-// Comando /help
-bot.onText(/\/help/, (msg) => {
-  if (!isAuthorized(msg)) return;
-  
-  const chatId = msg.chat.id;
-  bot.sendMessage(chatId,
-    '📖 *Ayuda Privada:*\n\n' +
-    '1️⃣ Envía un PDF\n' +
-    '2️⃣ El bot lo renombra con SHA-256\n' +
-    '3️⃣ Recibirás un QR con el link oficial de tu web\n\n' +
-    '🔒 *Nota:* Nadie más tiene acceso a subir archivos aquí.',
-    { parse_mode: 'Markdown' }
-  );
+  bot.sendMessage(msg.chat.id, '👋 Envíame un PDF y le insertaré su propio QR de verificación.');
 });
 
 // Procesar archivos PDF
 bot.on('document', async (msg) => {
-  if (!isAuthorized(msg)) {
-    return bot.sendMessage(msg.chat.id, '🚫 No tienes permiso para subir archivos aquí.');
-  }
+  if (!isAuthorized(msg)) return;
 
   const chatId = msg.chat.id;
   const fileId = msg.document.file_id;
   const fileName = msg.document.file_name;
 
-  // Validar que sea PDF
   if (!fileName.toLowerCase().endsWith('.pdf')) {
-    bot.sendMessage(chatId, '❌ Solo acepto archivos PDF. Por favor, envía un PDF válido.');
-    return;
+    return bot.sendMessage(chatId, '❌ Por favor, envía un archivo PDF.');
   }
 
   try {
-    // Mostrar que está procesando
-    bot.sendMessage(chatId, '⏳ Procesando tu PDF...');
+    bot.sendMessage(chatId, '⏳ Generando certificado auto-verificable...');
 
-    // Descargar archivo
+    // Descargar archivo a buffer en lugar de archivo temporal directo
     const fileStream = bot.getFileStream(fileId);
+    const chunks = [];
+    for await (const chunk of fileStream) {
+      chunks.push(chunk);
+    }
+    const pdfBuffer = Buffer.concat(chunks);
 
-    // Guardar archivo temporalmente con nombre único
-    const uniqueId = crypto.randomBytes(8).toString('hex');
-    const tempFile = path.join(__dirname, `temp_${uniqueId}.pdf`);
-    const writeStream = fs.createWriteStream(tempFile);
+    // Calcular Hash SHA-256
+    const hash = crypto.createHash('sha256').update(pdfBuffer).digest('hex').toUpperCase();
+    const displayUrl = `${DOMAIN}/ver/${hash}`;
 
-    fileStream.pipe(writeStream);
-
-    writeStream.on('finish', async () => {
-      // Leer archivo y generar hash
-      const fileContent = fs.readFileSync(tempFile);
-      const hash = crypto.createHash('sha256').update(fileContent).digest('hex').toUpperCase();
-      
-      // Nombre final
-      const finalFileName = `${hash}.pdf`;
-      const finalPath = path.join(uploadDir, finalFileName);
-
-      // Mover archivo (sobrescribir si ya existe el mismo contenido)
-      fs.renameSync(tempFile, finalPath);
-
-      // Generar URL de visualización (nueva ruta)
-      const displayUrl = `${DOMAIN}/ver/${hash}`;
-
-      // Generar QR
-      const qrPath = path.join(__dirname, `qr_${uniqueId}.png`);
-      await QRCode.toFile(qrPath, displayUrl, {
-        color: {
-          dark: '#0f172a',
-          light: '#ffffff'
-        },
-        width: 400,
-        margin: 2
-      });
-
-      // Enviar QR
-      await bot.sendPhoto(chatId, qrPath, {
-        caption: 
-          '✅ *Certificado procesado*\n\n' +
-          `🔐 Hash: \`${hash}\`\n\n` +
-          `🔗 Link de Verificación:\n${displayUrl}\n\n` +
-          '📱 Escanea el QR para visualizar el documento oficial.',
-        parse_mode: 'Markdown'
-      });
-
-      // Limpiar temporal
-      if (fs.existsSync(qrPath)) fs.unlinkSync(qrPath);
-
-      console.log(`✅ PDF procesado: ${finalFileName}`);
+    // Generar imagen QR en Buffer (Negro puro)
+    const qrImageBuffer = await QRCode.toBuffer(displayUrl, {
+      margin: 0,
+      width: 400,
+      color: { dark: '#000000', light: '#ffffff' }
     });
 
-    writeStream.on('error', (err) => {
-      bot.sendMessage(chatId, `❌ Error al procesar: ${err.message}`);
-      console.error('Error:', err);
+    // --- MAGIA: Editar PDF con pdf-lib ---
+    const pdfDoc = await PDFDocument.load(pdfBuffer);
+    const pages = pdfDoc.getPages();
+    const firstPage = pages[0];
+
+    // Embeber la imagen del QR en el PDF
+    const qrImage = await pdfDoc.embedPng(qrImageBuffer);
+    
+    // Dibujar el QR en la posición configurada
+    firstPage.drawImage(qrImage, {
+      x: QR_X,
+      y: QR_Y,
+      width: QR_SIZE,
+      height: QR_SIZE,
     });
+
+    // Guardar el PDF modificado
+    const modifiedPdfBytes = await pdfDoc.save();
+    const finalFileName = `${hash}.pdf`;
+    const finalPath = path.join(uploadDir, finalFileName);
+
+    fs.writeFileSync(finalPath, modifiedPdfBytes);
+
+    // Enviar el PDF modificado de vuelta al usuario
+    await bot.sendDocument(chatId, finalPath, {
+      caption: 
+        '✅ *Certificado Listo*\n\n' +
+        `🔐 Hash: \`${hash}\`\n` +
+        `🔗 Link: ${displayUrl}\n\n` +
+        'El QR ha sido insertado en el documento.',
+      parse_mode: 'Markdown'
+    });
+
+    console.log(`✅ PDF Editado y Guardado: ${finalFileName}`);
 
   } catch (error) {
     bot.sendMessage(chatId, `❌ Error: ${error.message}`);
