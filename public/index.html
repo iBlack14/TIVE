@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subir Certificados</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+      width: 100%;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .subtitle {
+      color: #666;
+      font-size: 14px;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .upload-area {
+      border: 2px dashed #667eea;
+      border-radius: 8px;
+      padding: 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: #f8f9ff;
+    }
+
+    .upload-area:hover {
+      border-color: #764ba2;
+      background: #f0f1ff;
+    }
+
+    .upload-area.dragover {
+      border-color: #764ba2;
+      background: #e8ebff;
+      transform: scale(1.02);
+    }
+
+    .upload-icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+    }
+
+    .upload-text {
+      color: #666;
+      margin-bottom: 10px;
+    }
+
+    .upload-text strong {
+      color: #333;
+    }
+
+    .upload-hint {
+      color: #999;
+      font-size: 12px;
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    .button-group {
+      margin-top: 30px;
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      flex: 1;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .btn-upload {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-upload:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-upload:active {
+      transform: translateY(0);
+    }
+
+    .btn-list {
+      background: #f0f0f0;
+      color: #333;
+    }
+
+    .btn-list:hover {
+      background: #e0e0e0;
+    }
+
+    .result {
+      margin-top: 30px;
+      padding: 15px;
+      border-radius: 5px;
+      display: none;
+    }
+
+    .result.success {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+      display: block;
+    }
+
+    .result.error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+      display: block;
+    }
+
+    .result-title {
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .result-content {
+      font-size: 14px;
+      word-break: break-all;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .file-list {
+      margin-top: 30px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .file-list-title {
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .file-item {
+      background: #f5f5f5;
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 5px;
+      font-size: 12px;
+      word-break: break-all;
+      color: #666;
+    }
+
+    .file-count {
+      color: #667eea;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📄 Subir Certificados</h1>
+    <p class="subtitle">Los archivos se guardarán con hash SHA-256</p>
+
+    <form id="uploadForm" enctype="multipart/form-data">
+      <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">📎</div>
+        <div class="upload-text">
+          <strong>Haz clic o arrastra tu PDF aquí</strong>
+        </div>
+        <div class="upload-hint">Solo se permiten archivos PDF</div>
+        <input type="file" id="fileInput" name="pdf" accept=".pdf" />
+      </div>
+
+      <div class="button-group">
+        <button type="button" class="btn-upload" id="uploadBtn">📤 Subir</button>
+        <button type="button" class="btn-list" id="listBtn">📋 Ver Archivos</button>
+      </div>
+    </form>
+
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p>Subiendo...</p>
+    </div>
+
+    <div class="result" id="result"></div>
+
+    <div class="file-list" id="fileList"></div>
+  </div>
+
+  <script>
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const listBtn = document.getElementById('listBtn');
+    const loading = document.getElementById('loading');
+    const result = document.getElementById('result');
+    const fileList = document.getElementById('fileList');
+
+    // Abrir input al hacer clic en el área
+    uploadArea.addEventListener('click', () => fileInput.click());
+
+    // Drag and drop
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        fileInput.files = files;
+      }
+    });
+
+    // Cambio de archivo
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length > 0) {
+        const fileName = fileInput.files[0].name;
+        uploadArea.querySelector('.upload-text strong').textContent = `✓ ${fileName}`;
+      }
+    });
+
+    // Subir archivo
+    uploadBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+
+      if (!fileInput.files.length) {
+        showResult('error', 'Por favor selecciona un archivo PDF');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('pdf', fileInput.files[0]);
+
+      loading.style.display = 'block';
+      result.style.display = 'none';
+
+      try {
+        const response = await fetch('/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showResult('success', `✅ Archivo subido exitosamente<br><br><strong>Nombre guardado:</strong><br>${data.filename}`);
+          fileInput.value = '';
+          uploadArea.querySelector('.upload-text strong').textContent = 'Haz clic o arrastra tu PDF aquí';
+        } else {
+          showResult('error', `❌ Error: ${data.error}`);
+        }
+      } catch (error) {
+        showResult('error', `❌ Error al subir: ${error.message}`);
+      } finally {
+        loading.style.display = 'none';
+      }
+    });
+
+    // Listar archivos
+    listBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+
+      loading.style.display = 'block';
+      fileList.innerHTML = '';
+
+      try {
+        const response = await fetch('/archivos');
+        const data = await response.json();
+
+        if (data.total === 0) {
+          fileList.innerHTML = '<p style="color: #999; text-align: center;">No hay archivos subidos</p>';
+        } else {
+          let html = `<div class="file-list-title">📁 Archivos subidos: <span class="file-count">${data.total}</span></div>`;
+          data.archivos.forEach(archivo => {
+            html += `<div class="file-item">${archivo}</div>`;
+          });
+          fileList.innerHTML = html;
+        }
+      } catch (error) {
+        fileList.innerHTML = `<p style="color: red;">Error al cargar archivos: ${error.message}</p>`;
+      } finally {
+        loading.style.display = 'none';
+      }
+    });
+
+    function showResult(type, message) {
+      result.className = `result ${type}`;
+      result.innerHTML = `<div class="result-content">${message}</div>`;
+      result.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

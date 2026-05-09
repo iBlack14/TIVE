@@ -1,0 +1,8 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+*.pdf
+temp_*.pdf
+temp_qr.png
+servicio/verCertificado/*.pdf

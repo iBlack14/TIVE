@@ -1,0 +1,23 @@
+{
+  "name": "servicio-certificados",
+  "version": "1.0.0",
+  "description": "Servicio para subir certificados con hash SHA-256",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "bot": "node bot.js",
+    "dev": "node server.js",
+    "all": "concurrently \"node server.js\" \"node bot.js\""
+  },
+  "keywords": ["pdf", "upload", "certificados"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1",
+    "crypto": "^1.0.1",
+    "node-telegram-bot-api": "^0.64.0",
+    "qrcode": "^1.5.3",
+    "dotenv": "^16.3.1"
+  }
+}
