@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    container_name: bot-certificados
+    ports:
+      - "3000:3000"
+    volumes:
+      # Carpeta de certificados persistente (Local Storage)
+      - ./servicio/verCertificado:/app/servicio/verCertificado
+    env_file:
+      - .env
+    restart: always
