@@ -1,5 +1,6 @@
 FROM node:20-slim
 
+# Instalamos herramientas de imagen necesarias para la conversión a PNG
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
@@ -9,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libgif-dev \
     librsvg2-dev \
+    ghostscript \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -16,7 +18,6 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --production
 
-# COPIA EXPLICITA DE CARPETAS CRÍTICAS
 COPY ./tarjeta ./tarjeta
 COPY . .
 
