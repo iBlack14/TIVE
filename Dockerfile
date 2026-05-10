@@ -1,6 +1,6 @@
 FROM node:20-slim
 
-# Instalamos poppler-utils y fuentes estándar para evitar el error de "font not found"
+# Instalamos poppler-utils, poppler-data y fuentes estándar
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     libgif-dev \
     librsvg2-dev \
     poppler-utils \
+    poppler-data \
     fonts-liberation \
     fontconfig \
     gsfonts \
