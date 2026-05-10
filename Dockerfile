@@ -1,6 +1,6 @@
 FROM node:20-slim
 
-# Instalamos poppler-utils para una conversión de PDF a PNG perfecta
+# Instalamos poppler-utils y fuentes estándar para evitar el error de "font not found"
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
@@ -11,7 +11,11 @@ RUN apt-get update && apt-get install -y \
     libgif-dev \
     librsvg2-dev \
     poppler-utils \
-    && rm -rf /var/lib/apt/lists/*
+    fonts-liberation \
+    fontconfig \
+    gsfonts \
+    && rm -rf /var/lib/apt/lists/* \
+    && fc-cache -f -v
 
 WORKDIR /app
 
