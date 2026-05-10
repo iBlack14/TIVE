@@ -13,7 +13,6 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = process.env.ADMIN_ID;
 const DOMAIN = process.env.DOMAIN_URL || 'localhost:3000';
 
-// LISTA DE LLAVES PARA RESPALDO
 const API_KEYS = [
     "AIzaSyBQMCOse-Af9uQwW6W-kCp_eRzmA9jNgxw",
     "AIzaSyDOZEej0HnnmZzqnSY0D78wszPGB8Sa5ls"
@@ -22,7 +21,6 @@ const API_KEYS = [
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 const userPdfs = new Map();
 
-// --- PERMISOS ---
 const isAuthorized = (msg) => {
     if (!ADMIN_ID) return true; 
     return msg.from.id.toString() === ADMIN_ID.toString();
@@ -30,7 +28,7 @@ const isAuthorized = (msg) => {
 
 const safe = (t) => t ? String(t).toUpperCase() : '';
 
-// --- FUNCIONES TÉCNICAS TIVE ---
+// --- FUNCIONES TÉCNICAS ---
 const C128_PATTERNS = { '0': '11011001100', '1': '11001101100', '2': '11001100110', '3': '10001101100', '4': '10001100110', '5': '10110000110', '6': '10110000110', '7': '10110110000', '8': '10110011011', '9': '11001011000', 'A': '11000101100', 'B': '11000100110', 'C': '11011000100', 'D': '11011000010', 'E': '11011011000', 'F': '11011001101', 'G': '11011011011', 'H': '11001101101', 'I': '11001101111', 'J': '11011110110', 'K': '11011111011', 'L': '11110110110', 'M': '11110110111', 'N': '11110111101', 'O': '11110111111', 'P': '11001101101', 'Q': '11001101111', 'R': '11011110110', 'S': '11011111011', 'T': '11110110110', 'U': '11110110111', 'V': '11110111101', 'W': '11110111111', 'X': '11001101101', 'Y': '11001101111', 'Z': '11011110110', '-': '11000111010', '.': '11011011110', ' ': '11011011011', ':': '11011111010' };
 
 function drawRealBarcode(page, text, x, y, width, height) {
@@ -44,31 +42,40 @@ function drawRealBarcode(page, text, x, y, width, height) {
     }
 }
 
-// LÓGICA DE IA CON ROTACIÓN DE LLAVES
+// BÚSQUEDA FLEXIBLE DE PLANTILLAS
+function getTemplatePath(name) {
+    const p = [
+        path.join(__dirname, 'tarjeta', name),
+        path.join(__dirname, name),
+        path.join(process.cwd(), 'tarjeta', name),
+        path.join(process.cwd(), name)
+    ];
+    for (const pathFound of p) {
+        if (fs.existsSync(pathFound)) return pathFound;
+    }
+    throw new Error(`No se encontró la plantilla ${name}. Asegúrate de que esté en la carpeta 'tarjeta' o en la raíz.`);
+}
+
 async function extraerConIA(pdfBuffer) {
     let lastError = null;
     for (const key of API_KEYS) {
         try {
-            console.log(`🧠 Intentando con API Key: ...${key.slice(-4)}`);
             const genAI = new GoogleGenerativeAI(key);
-            // Usamos el nombre exacto que salió en tu lista: gemini-flash-latest
             const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
             const prompt = `Analiza este documento TIVE. Extrae datos y devuelve SOLO JSON con llaves exactas: zona, sede, partida, dua, titulo, fechaTitulo, placa, codVerif, tituloNo, fechaFinal, categoria, marca, modelo, color, añoModelo, version, vin, serie, motor, carroceria, potencia, formRod, combustible, asientos, pasajeros, ruedas, ejes, cilindros, longitud, altura, ancho, cilindrada, pBruto, pNeto, cargaUtil.`;
             const result = await model.generateContent([{ inlineData: { data: pdfBuffer.toString("base64"), mimeType: "application/pdf" } }, { text: prompt }]);
             return JSON.parse(result.response.text().replace(/```json|```/g, "").trim());
-        } catch (e) {
-            console.error(`⚠️ Falló llave ...${key.slice(-4)}: ${e.message}`);
-            lastError = e;
-        }
+        } catch (e) { lastError = e; }
     }
-    throw new Error(`Ambas llaves fallaron. Último error: ${lastError.message}`);
+    throw lastError;
 }
 
 async function generarTIVE(chatId, datos) {
     const fontB = await (await PDFDocument.create()).embedFont(StandardFonts.HelveticaBold);
     
     // Anverso
-    const pdfAnt = await PDFDocument.load(fs.readFileSync(path.join(__dirname, 'tarjeta', 'adelantexd.pdf')));
+    const antPath = getTemplatePath('adelantexd.pdf');
+    const pdfAnt = await PDFDocument.load(fs.readFileSync(antPath));
     const pageA = pdfAnt.getPages()[0];
     const { height: hA } = pageA.getSize();
     const dA = (t, x, y, size = 6.5) => pageA.drawText(safe(t), { x, y: hA - y, size, font: fontB });
@@ -82,7 +89,8 @@ async function generarTIVE(chatId, datos) {
     pageA.drawImage(qrImg, { x: 100, y: hA - 170, width: 52, height: 52 });
 
     // Reverso
-    const pdfRev = await PDFDocument.load(fs.readFileSync(path.join(__dirname, 'tarjeta', 'atrasxd.pdf')));
+    const revPath = getTemplatePath('atrasxd.pdf');
+    const pdfRev = await PDFDocument.load(fs.readFileSync(revPath));
     const pageR = pdfRev.getPages()[0];
     const { height: hR, width: wR } = pageR.getSize();
     const dR = (t, x, y, size = 4.8) => pageR.drawText(safe(t), { x, y: hR - y, size, font: fontB });
@@ -108,7 +116,6 @@ async function generarTIVE(chatId, datos) {
     fs.unlinkSync(fA); fs.unlinkSync(fR);
 }
 
-// --- COMANDOS ---
 bot.onText(/\/start/, (msg) => {
     if (!isAuthorized(msg)) return;
     bot.sendMessage(msg.chat.id, "👋 ¡Hola! Soy el Bot TIVE Pro.\n\n1. Envíame un PDF.\n2. Elige si quieres generar las **Tarjetas TIVE (IA)** o el **QR de Verificación**.");
@@ -139,15 +146,13 @@ bot.on('callback_query', async (query) => {
     if (!buffer) return bot.sendMessage(chatId, "❌ Reenvía el PDF.");
 
     if (query.data === "tive") {
-        bot.sendMessage(chatId, "🧠 Procesando con IA... intenta con rotación de llaves.");
+        bot.sendMessage(chatId, "🧠 Procesando con IA...");
         try {
             const d = await extraerConIA(buffer);
             await generarTIVE(chatId, d);
-        } catch (e) { bot.sendMessage(chatId, "❌ Error Fatal: " + e.message); }
-    } else if (query.data === "qr") {
-        bot.sendMessage(chatId, "⏳ Generando QR de verificación...");
+        } catch (e) { bot.sendMessage(chatId, "❌ Error: " + e.message); }
     }
     bot.answerCallbackQuery(query.id);
 });
 
-console.log("🤖 Bot TIVE IA Online con Rotación de Llaves!");
+console.log("🤖 Bot TIVE IA Online!");

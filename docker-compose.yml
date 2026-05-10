@@ -6,9 +6,8 @@ services:
     env_file:
       - .env
     volumes:
-      # PERSISTENCIA: Los archivos subidos se guardan en tu PC real
+      # SOLO PERSISTENCIA para lo que subes
       - ./servicio/verCertificado:/app/servicio/verCertificado
-      - ./tarjeta:/app/tarjeta
       - ./logs:/app/logs
     environment:
       - NODE_ENV=production
