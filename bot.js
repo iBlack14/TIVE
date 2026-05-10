@@ -3,7 +3,6 @@ const QRCode = require('qrcode');
 const path = require('path');
 const fs = require('fs');
 const bwipjs = require('bwip-js');
-const { execSync } = require('child_process');
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pdf2img = require('pdf-img-convert');
@@ -17,7 +16,6 @@ const API_KEYS = (process.env.GEMINI_KEYS || "").split(",").map(k => k.trim()).f
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 const userPdfs = new Map();
-const userState = new Map();
 
 const isAuthorized = (msg) => !ADMIN_ID || msg.from.id.toString() === ADMIN_ID.toString();
 const safe = (t) => t ? String(t).trim() : '';
@@ -61,7 +59,7 @@ async function extraerConIA(pdfBuffer) {
     throw lastError;
 }
 
-async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = null) {
+async function generarTIVE(chatId, datos, originalBuffer = null) {
     const fontB = await (await PDFDocument.create()).embedFont(StandardFonts.HelveticaBold);
     const gris = rgb(0.6, 0.6, 0.6);
     const negro = rgb(0, 0, 0);
@@ -81,7 +79,7 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
     pageA.drawText(safe(datos.tituloNo), { x: 183, y: hA - 149.5, size: 4.5, font: fontB, color: negro });
     pageA.drawText(safe(datos.fechaFinal), { x: 177, y: hA - 158, size: 4.5, font: fontB, color: negro });
     drawRealBarcode(pageA, datos.placa, 10, hA - 168, 80, 15);
-    const finalQR = qrCustomLink || `https://tive.sunarp.gob.pe/ver/${safe(datos.placa)}`;
+    const finalQR = `https://tive.sunarp.gob.pe/ver/${safe(datos.placa)}`;
     const qrImg = await pdfAnt.embedPng(await QRCode.toDataURL(finalQR, { margin: 1 }));
     pageA.drawImage(qrImg, { x: 100, y: hA - 170, width: 52, height: 52 });
 
@@ -105,16 +103,12 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
     const barImg = await pdfRev.embedPng(await bwipjs.toBuffer({ bcid: 'pdf417', text: barText, scale: 2, height: 12 }));
     pageR.drawImage(barImg, { x: (wR / 2) - (246 / 2), y: 5, width: 170, height: 22 });
 
-    // --- RECORTE DE FIRMA USANDO PDF-IMG-CONVERT Y SHARP (SIN DEPENDENCIAS EXTERNAS) ---
+    // --- RECORTE DE FIRMA ---
     if (originalBuffer) {
         try {
-            // Convertimos la primera página a imagen (300 DPI)
-            const images = await pdf2img.convert(originalBuffer, { base64: false });
+            const images = await pdf2img.convert(originalBuffer, { width: 2000 });
             if (images && images.length > 0) {
-                // Coordenadas calibradas para SUNARP (ajustadas para Sharp)
-                // pdftocairo: x=430, y=760, W=140, H=60
-                // Sharp usa coordenadas de imagen real. A 300 DPI, 1 pt = 4.166 px
-                const scale = 300 / 72;
+                const scale = 2000 / 612; // Basado en el ancho estándar de SUNARP PDF
                 const sigCrop = await sharp(images[0])
                     .extract({ 
                         left: Math.round(430 * scale), 
@@ -135,30 +129,18 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
     const bufR = await pdfRev.save();
 
     try {
-        // Convertimos los PDFs resultantes a PNG sin usar pdftocairo
-        const imgA = await pdf2img.convert(bufA, { base64: false });
-        const imgR = await pdf2img.convert(bufR, { base64: false });
+        const imgA = await pdf2img.convert(bufA, { width: 1200 });
+        const imgR = await pdf2img.convert(bufR, { width: 1200 });
 
-        await bot.sendPhoto(chatId, imgA[0], { 
-            caption: `✅ Anverso - QR: ${finalQR}`,
-            contentType: 'image/png'
-        });
-        await bot.sendPhoto(chatId, imgR[0], { 
-            caption: `✅ Reverso`,
-            contentType: 'image/png'
-        });
+        // Usamos fileOptions para evitar errores de parseo y 414 de Nginx
+        await bot.sendPhoto(chatId, imgA[0], { caption: `✅ Anverso` }, { filename: 'anverso.png', contentType: 'image/png' });
+        await bot.sendPhoto(chatId, imgR[0], { caption: `✅ Reverso` }, { filename: 'reverso.png', contentType: 'image/png' });
     } catch (e) {
         console.error("Error enviando fotos:", e.message);
-        await bot.sendDocument(chatId, Buffer.from(bufA), { filename: `anv_${safe(datos.placa)}.pdf` });
-        await bot.sendDocument(chatId, Buffer.from(bufR), { filename: `rev_${safe(datos.placa)}.pdf` });
+        await bot.sendDocument(chatId, Buffer.from(bufA), { caption: "Anverso (PDF)" }, { filename: `anv_${safe(datos.placa)}.pdf` });
+        await bot.sendDocument(chatId, Buffer.from(bufR), { caption: "Reverso (PDF)" }, { filename: `rev_${safe(datos.placa)}.pdf` });
     }
 }
-
-bot.onText(/\/start/, (msg) => {
-    if (!isAuthorized(msg)) return;
-    const welcome = `🚀 *TIVE Pro - AI Generation Suite*\n━━━━━━━━━━━━━━━━━━\nBienvenido.\n\n📥 *Instrucciones:*\n1. Envía el *PDF original*.\n2. Selecciona el proceso.\n\n_Esperando documento..._`;
-    bot.sendMessage(msg.chat.id, welcome, { parse_mode: 'Markdown' });
-});
 
 bot.on('document', async (msg) => {
     if (!isAuthorized(msg)) return;
@@ -166,7 +148,7 @@ bot.on('document', async (msg) => {
     const chunks = [];
     for await (const chunk of bot.getFileStream(msg.document.file_id)) { chunks.push(chunk); }
     userPdfs.set(chatId, Buffer.concat(chunks));
-    bot.sendMessage(chatId, "📄 PDF recibido. ¿Qué deseas hacer?", { reply_markup: { inline_keyboard: [[{ text: "📸 Generar Tarjetas PNG (IA)", callback_data: "ask_qr" }], [{ text: "🔐 Insertar QR Verificación", callback_data: "qr" }]] } });
+    bot.sendMessage(chatId, "📄 PDF recibido. Generando tarjetas...", { reply_markup: { inline_keyboard: [[{ text: "📸 Generar Imágenes (IA)", callback_data: "gen" }]] } });
 });
 
 bot.on('callback_query', async (query) => {
@@ -174,35 +156,14 @@ bot.on('callback_query', async (query) => {
     const buffer = userPdfs.get(chatId);
     if (!buffer) return bot.sendMessage(chatId, "❌ Reenvía el PDF.");
 
-    if (query.data === "ask_qr") {
-        userState.set(chatId, "awaiting_qr");
-        bot.sendMessage(chatId, "🔗 *Configuración de QR*\n\nEnvía el enlace personalizado para el QR o presiona el botón para el oficial.", {
-            parse_mode: 'Markdown',
-            reply_markup: { inline_keyboard: [[{ text: "🏛️ Usar Link Oficial SUNARP", callback_data: "use_official" }]] }
-        });
-    } else if (query.data === "use_official") {
-        userState.delete(chatId);
+    if (query.data === "gen") {
         bot.sendMessage(chatId, "🧠 Procesando con IA...");
         try { 
             const datos = await extraerConIA(buffer);
-            await generarTIVE(chatId, datos, null, buffer); 
+            await generarTIVE(chatId, datos, buffer); 
         } catch (e) { bot.sendMessage(chatId, "❌ Error: " + e.message); }
     }
     bot.answerCallbackQuery(query.id);
-});
-
-bot.on('message', async (msg) => {
-    const chatId = msg.chat.id;
-    if (userState.get(chatId) === "awaiting_qr" && msg.text && !msg.text.startsWith('/')) {
-        const customLink = msg.text;
-        const buffer = userPdfs.get(chatId);
-        userState.delete(chatId);
-        bot.sendMessage(chatId, `🧠 Procesando con IA...`);
-        try { 
-            const datos = await extraerConIA(buffer);
-            await generarTIVE(chatId, datos, customLink, buffer); 
-        } catch (e) { bot.sendMessage(chatId, "❌ Error: " + e.message); }
-    }
 });
 
 console.log("🤖 Bot TIVE IA Online!");
