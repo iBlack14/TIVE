@@ -15,6 +15,7 @@ const API_KEYS = ["AIzaSyBQMCOse-Af9uQwW6W-kCp_eRzmA9jNgxw", "AIzaSyDOZEej0HnnmZ
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 const userPdfs = new Map();
+const userState = new Map();
 
 const isAuthorized = (msg) => !ADMIN_ID || msg.from.id.toString() === ADMIN_ID.toString();
 const safe = (t) => t ? String(t).trim() : '';
@@ -53,7 +54,7 @@ async function extraerConIA(pdfBuffer) {
     throw lastError;
 }
 
-async function generarTIVE(chatId, datos) {
+async function generarTIVE(chatId, datos, qrCustomLink = null) {
     const fontB = await (await PDFDocument.create()).embedFont(StandardFonts.HelveticaBold);
     const gris = rgb(0.6, 0.6, 0.6);
     const negro = rgb(0, 0, 0);
@@ -73,7 +74,10 @@ async function generarTIVE(chatId, datos) {
     pageA.drawText(safe(datos.tituloNo), { x: 183, y: hA - 149.5, size: 4.5, font: fontB, color: negro });
     pageA.drawText(safe(datos.fechaFinal), { x: 177, y: hA - 158, size: 4.5, font: fontB, color: negro });
     drawRealBarcode(pageA, datos.placa, 10, hA - 168, 80, 15);
-    const qrImg = await pdfAnt.embedPng(await QRCode.toDataURL(`https://tive.sunarp.gob.pe/ver/${safe(datos.placa)}`, { margin: 1 }));
+    
+    // QR Lógica: Usar personalizado o oficial
+    const finalQR = qrCustomLink || `https://tive.sunarp.gob.pe/ver/${safe(datos.placa)}`;
+    const qrImg = await pdfAnt.embedPng(await QRCode.toDataURL(finalQR, { margin: 1 }));
     pageA.drawImage(qrImg, { x: 100, y: hA - 170, width: 52, height: 52 });
 
     // REVERSO
@@ -96,53 +100,63 @@ async function generarTIVE(chatId, datos) {
     const barImg = await pdfRev.embedPng(await bwipjs.toBuffer({ bcid: 'pdf417', text: barText, scale: 2, height: 12 }));
     pageR.drawImage(barImg, { x: (wR / 2) - (246 / 2), y: 5, width: 170, height: 22 });
 
-    // CONVERSIÓN A PNG CON POPPLER
     const fA_pdf = `anv_${safe(datos.placa)}.pdf`; const fR_pdf = `rev_${safe(datos.placa)}.pdf`;
     fs.writeFileSync(fA_pdf, await pdfAnt.save()); fs.writeFileSync(fR_pdf, await pdfRev.save());
-
-    bot.sendMessage(chatId, "📸 *Generando imágenes de alta resolución...*", { parse_mode: 'Markdown' });
 
     try {
         execSync(`pdftocairo -png -singlefile -r 300 ${fA_pdf} anv_${safe(datos.placa)}`);
         execSync(`pdftocairo -png -singlefile -r 300 ${fR_pdf} rev_${safe(datos.placa)}`);
-
-        await bot.sendPhoto(chatId, `anv_${safe(datos.placa)}.png`, { caption: `✅ Anverso - Placa: ${safe(datos.placa)}` });
-        await bot.sendPhoto(chatId, `rev_${safe(datos.placa)}.png`, { caption: `✅ Reverso - Placa: ${safe(datos.placa)}` });
-
-        // Limpieza
-        fs.unlinkSync(fA_pdf); fs.unlinkSync(fR_pdf);
-        fs.unlinkSync(`anv_${safe(datos.placa)}.png`); fs.unlinkSync(`rev_${safe(datos.placa)}.png`);
+        await bot.sendPhoto(chatId, `anv_${safe(datos.placa)}.png`, { caption: `✅ Anverso - QR: ${finalQR}` });
+        await bot.sendPhoto(chatId, `rev_${safe(datos.placa)}.png`, { caption: `✅ Reverso` });
+        fs.unlinkSync(fA_pdf); fs.unlinkSync(fR_pdf); fs.unlinkSync(`anv_${safe(datos.placa)}.png`); fs.unlinkSync(`rev_${safe(datos.placa)}.png`);
     } catch (e) {
-        bot.sendMessage(chatId, "⚠️ Error convirtiendo a PNG, enviando PDF...");
         await bot.sendDocument(chatId, fA_pdf); await bot.sendDocument(chatId, fR_pdf);
     }
 }
 
 bot.onText(/\/start/, (msg) => {
     if (!isAuthorized(msg)) return;
-    const welcome = `🚀 *TIVE Pro - AI Generation Suite*\n━━━━━━━━━━━━━━━━━━\nBienvenido al sistema automatizado de procesamiento TIVE.\n\n📥 *Instrucciones:*\n1. Envía el *PDF original* de la SUNARP.\n2. Selecciona el proceso en el menú interactivo.\n\n✨ *Servicios disponibles:*\n• 📸 *Generar Tarjetas PNG (IA)*: Extracción con IA y salida en PNG.\n• 🔐 *Certificado con QR*: Inserción de código de verificación.\n\n_Esperando documento..._`;
+    const welcome = `🚀 *TIVE Pro - AI Generation Suite*\n━━━━━━━━━━━━━━━━━━\nBienvenido.\n\n📥 *Instrucciones:*\n1. Envía el *PDF original*.\n2. Selecciona el proceso.\n\n_Esperando documento..._`;
     bot.sendMessage(msg.chat.id, welcome, { parse_mode: 'Markdown' });
 });
 
 bot.on('document', async (msg) => {
     if (!isAuthorized(msg)) return;
     const chatId = msg.chat.id;
-    const fileStream = bot.getFileStream(msg.document.file_id);
     const chunks = [];
-    for await (const chunk of fileStream) { chunks.push(chunk); }
+    for await (const chunk of bot.getFileStream(msg.document.file_id)) { chunks.push(chunk); }
     userPdfs.set(chatId, Buffer.concat(chunks));
-    bot.sendMessage(chatId, "📄 PDF recibido. ¿Qué deseas hacer?", { reply_markup: { inline_keyboard: [[{ text: "📸 Generar Tarjetas PNG (IA)", callback_data: "tive" }], [{ text: "🔐 Insertar QR Verificación", callback_data: "qr" }]] } });
+    bot.sendMessage(chatId, "📄 PDF recibido. ¿Qué deseas hacer?", { reply_markup: { inline_keyboard: [[{ text: "📸 Generar Tarjetas PNG (IA)", callback_data: "ask_qr" }], [{ text: "🔐 Insertar QR Verificación", callback_data: "qr" }]] } });
 });
 
 bot.on('callback_query', async (query) => {
     const chatId = query.message.chat.id;
     const buffer = userPdfs.get(chatId);
     if (!buffer) return bot.sendMessage(chatId, "❌ Reenvía el PDF.");
-    if (query.data === "tive") {
-        bot.sendMessage(chatId, "🧠 Procesando con IA...");
+
+    if (query.data === "ask_qr") {
+        userState.set(chatId, "awaiting_qr");
+        bot.sendMessage(chatId, "🔗 *Configuración de QR*\n\nEnvía el enlace personalizado para el código QR o presiona el botón para usar el enlace oficial de SUNARP.", {
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: [[{ text: "🏛️ Usar Link Oficial SUNARP", callback_data: "use_official" }]] }
+        });
+    } else if (query.data === "use_official") {
+        userState.delete(chatId);
+        bot.sendMessage(chatId, "🧠 Procesando con IA y Link Oficial...");
         try { await generarTIVE(chatId, await extraerConIA(buffer)); } catch (e) { bot.sendMessage(chatId, "❌ Error: " + e.message); }
     }
     bot.answerCallbackQuery(query.id);
+});
+
+bot.on('message', async (msg) => {
+    const chatId = msg.chat.id;
+    if (userState.get(chatId) === "awaiting_qr" && msg.text && !msg.text.startsWith('/')) {
+        const customLink = msg.text;
+        const buffer = userPdfs.get(chatId);
+        userState.delete(chatId);
+        bot.sendMessage(chatId, `🧠 Procesando con IA y Link: ${customLink}`);
+        try { await generarTIVE(chatId, await extraerConIA(buffer), customLink); } catch (e) { bot.sendMessage(chatId, "❌ Error: " + e.message); }
+    }
 });
 
 console.log("🤖 Bot TIVE IA Online!");
