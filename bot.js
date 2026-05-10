@@ -11,12 +11,15 @@ require('dotenv').config();
 // --- CONFIGURACIÓN ---
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = process.env.ADMIN_ID;
-const GEMINI_KEY = "AIzaSyBQMCOse-Af9uQwW6W-kCp_eRzmA9jNgxw";
 const DOMAIN = process.env.DOMAIN_URL || 'localhost:3000';
 
-const genAI = new GoogleGenerativeAI(GEMINI_KEY);
-const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+// LISTA DE LLAVES PARA RESPALDO
+const API_KEYS = [
+    "AIzaSyBQMCOse-Af9uQwW6W-kCp_eRzmA9jNgxw",
+    "AIzaSyDOZEej0HnnmZzqnSY0D78wszPGB8Sa5ls"
+];
 
+const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 const userPdfs = new Map();
 
 // --- PERMISOS ---
@@ -41,12 +44,24 @@ function drawRealBarcode(page, text, x, y, width, height) {
     }
 }
 
+// LÓGICA DE IA CON ROTACIÓN DE LLAVES
 async function extraerConIA(pdfBuffer) {
-    // Usando el modelo 2.0 que confirmamos en el listado
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    const prompt = `Analiza este documento TIVE. Extrae datos y devuelve SOLO JSON con llaves exactas: zona, sede, partida, dua, titulo, fechaTitulo, placa, codVerif, tituloNo, fechaFinal, categoria, marca, modelo, color, añoModelo, version, vin, serie, motor, carroceria, potencia, formRod, combustible, asientos, pasajeros, ruedas, ejes, cilindros, longitud, altura, ancho, cilindrada, pBruto, pNeto, cargaUtil.`;
-    const result = await model.generateContent([{ inlineData: { data: pdfBuffer.toString("base64"), mimeType: "application/pdf" } }, { text: prompt }]);
-    return JSON.parse(result.response.text().replace(/```json|```/g, "").trim());
+    let lastError = null;
+    for (const key of API_KEYS) {
+        try {
+            console.log(`🧠 Intentando con API Key: ...${key.slice(-4)}`);
+            const genAI = new GoogleGenerativeAI(key);
+            // Usamos el nombre exacto que salió en tu lista: gemini-flash-latest
+            const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+            const prompt = `Analiza este documento TIVE. Extrae datos y devuelve SOLO JSON con llaves exactas: zona, sede, partida, dua, titulo, fechaTitulo, placa, codVerif, tituloNo, fechaFinal, categoria, marca, modelo, color, añoModelo, version, vin, serie, motor, carroceria, potencia, formRod, combustible, asientos, pasajeros, ruedas, ejes, cilindros, longitud, altura, ancho, cilindrada, pBruto, pNeto, cargaUtil.`;
+            const result = await model.generateContent([{ inlineData: { data: pdfBuffer.toString("base64"), mimeType: "application/pdf" } }, { text: prompt }]);
+            return JSON.parse(result.response.text().replace(/```json|```/g, "").trim());
+        } catch (e) {
+            console.error(`⚠️ Falló llave ...${key.slice(-4)}: ${e.message}`);
+            lastError = e;
+        }
+    }
+    throw new Error(`Ambas llaves fallaron. Último error: ${lastError.message}`);
 }
 
 async function generarTIVE(chatId, datos) {
@@ -94,7 +109,6 @@ async function generarTIVE(chatId, datos) {
 }
 
 // --- COMANDOS ---
-
 bot.onText(/\/start/, (msg) => {
     if (!isAuthorized(msg)) return;
     bot.sendMessage(msg.chat.id, "👋 ¡Hola! Soy el Bot TIVE Pro.\n\n1. Envíame un PDF.\n2. Elige si quieres generar las **Tarjetas TIVE (IA)** o el **QR de Verificación**.");
@@ -125,16 +139,15 @@ bot.on('callback_query', async (query) => {
     if (!buffer) return bot.sendMessage(chatId, "❌ Reenvía el PDF.");
 
     if (query.data === "tive") {
-        bot.sendMessage(chatId, "🧠 Procesando con IA... espera un momento.");
+        bot.sendMessage(chatId, "🧠 Procesando con IA... intenta con rotación de llaves.");
         try {
             const d = await extraerConIA(buffer);
             await generarTIVE(chatId, d);
-        } catch (e) { bot.sendMessage(chatId, "❌ Error IA: " + e.message); }
+        } catch (e) { bot.sendMessage(chatId, "❌ Error Fatal: " + e.message); }
     } else if (query.data === "qr") {
         bot.sendMessage(chatId, "⏳ Generando QR de verificación...");
-        // (Lógica de QR de verificación original aquí si se desea)
     }
     bot.answerCallbackQuery(query.id);
 });
 
-console.log("🤖 Bot TIVE IA Online!");
+console.log("🤖 Bot TIVE IA Online con Rotación de Llaves!");
