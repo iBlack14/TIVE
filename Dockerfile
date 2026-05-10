@@ -1,6 +1,6 @@
 FROM node:20-slim
 
-# Instalamos herramientas de imagen necesarias para la conversión a PNG
+# Instalamos poppler-utils para una conversión de PDF a PNG perfecta
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libgif-dev \
     librsvg2-dev \
-    ghostscript \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

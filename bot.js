@@ -3,7 +3,7 @@ const QRCode = require('qrcode');
 const path = require('path');
 const fs = require('fs');
 const bwipjs = require('bwip-js');
-const pdfImg = require('pdf-img-convert');
+const { execSync } = require('child_process');
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 require('dotenv').config();
@@ -62,18 +62,16 @@ async function generarTIVE(chatId, datos) {
     const pdfAnt = await PDFDocument.load(fs.readFileSync(getTemplatePath('adelantexd.pdf')));
     const pageA = pdfAnt.getPages()[0];
     const { height: hA } = pageA.getSize();
-    
-    pageA.drawText(safe(datos.zona),        { x: 60,   y: hA - 56,    size: 5.5, font: fontB, color: gris });
-    pageA.drawText(safe(datos.sede),        { x: 55,   y: hA - 63,    size: 5.5, font: fontB, color: gris });
-    pageA.drawText(safe(datos.partida),     { x: 65,   y: hA - 75,    size: 6.8, font: fontB, color: negro });
-    pageA.drawText(safe(datos.dua),         { x: 50,   y: hA - 89,    size: 6.8, font: fontB, color: negro });
-    pageA.drawText(safe(datos.titulo),      { x: 34.5, y: hA - 104,   size: 6.8, font: fontB, color: negro });
-    pageA.drawText(safe(datos.fechaTitulo), { x: 65,   y: hA - 117,   size: 6.8, font: fontB, color: negro });
-    pageA.drawText(safe(datos.placa),       { x: 162,  y: hA - 115,   size: 17.9, font: fontB, color: negro });
-    pageA.drawText(safe(datos.codVerif),    { x: 213,  y: hA - 142,   size: 4.5, font: fontB, color: negro });
-    pageA.drawText(safe(datos.tituloNo),    { x: 183,  y: hA - 149.5, size: 4.5, font: fontB, color: negro });
-    pageA.drawText(safe(datos.fechaFinal),  { x: 177,  y: hA - 158,   size: 4.5, font: fontB, color: negro });
-
+    pageA.drawText(safe(datos.zona), { x: 60, y: hA - 56, size: 5.5, font: fontB, color: gris });
+    pageA.drawText(safe(datos.sede), { x: 55, y: hA - 63, size: 5.5, font: fontB, color: gris });
+    pageA.drawText(safe(datos.partida), { x: 65, y: hA - 75, size: 6.8, font: fontB, color: negro });
+    pageA.drawText(safe(datos.dua), { x: 50, y: hA - 89, size: 6.8, font: fontB, color: negro });
+    pageA.drawText(safe(datos.titulo), { x: 34.5, y: hA - 104, size: 6.8, font: fontB, color: negro });
+    pageA.drawText(safe(datos.fechaTitulo), { x: 65, y: hA - 117, size: 6.8, font: fontB, color: negro });
+    pageA.drawText(safe(datos.placa), { x: 162, y: hA - 115, size: 17.9, font: fontB, color: negro });
+    pageA.drawText(safe(datos.codVerif), { x: 213, y: hA - 142, size: 4.5, font: fontB, color: negro });
+    pageA.drawText(safe(datos.tituloNo), { x: 183, y: hA - 149.5, size: 4.5, font: fontB, color: negro });
+    pageA.drawText(safe(datos.fechaFinal), { x: 177, y: hA - 158, size: 4.5, font: fontB, color: negro });
     drawRealBarcode(pageA, datos.placa, 10, hA - 168, 80, 15);
     const qrImg = await pdfAnt.embedPng(await QRCode.toDataURL(`https://tive.sunarp.gob.pe/ver/${safe(datos.placa)}`, { margin: 1 }));
     pageA.drawImage(qrImg, { x: 100, y: hA - 170, width: 52, height: 52 });
@@ -83,7 +81,6 @@ async function generarTIVE(chatId, datos) {
     const pageR = pdfRev.getPages()[0];
     const { height: hR, width: wR } = pageR.getSize();
     const dR = (t, x, y, size = 4.5) => pageR.drawText(safe(t), { x, y: hR - y, size, font: fontB, color: negro });
-
     dR(datos.categoria, 37, 40.5); dR(datos.marca, 37, 47.5); dR(datos.modelo, 37, 54.5);
     dR(datos.color, 37, 61.5); dR(datos.vin, 59, 69.5); dR(datos.serie, 59, 76.5);
     dR(datos.motor, 59, 83.5); dR(datos.carroceria, 59, 90.5); dR(datos.potencia, 45, 97.5);
@@ -95,36 +92,35 @@ async function generarTIVE(chatId, datos) {
     dR(datos.altura, 115, 134.6); dR(datos.ancho, 115, 141.4);
     dR(datos.cilindrada, 203, 121); dR(datos.pBruto, 203, 127.8);
     dR(datos.pNeto, 203, 134.6); dR(datos.cargaUtil, 203, 142);
-
     const barText = `CATEGORIA:${safe(datos.categoria)}|MARCA:${safe(datos.marca)}|MODELO:${safe(datos.modelo)}|VIN:${safe(datos.vin)}|MOTOR:${safe(datos.motor)}`;
-    const barImgBuffer = await bwipjs.toBuffer({ bcid: 'pdf417', text: barText, scale: 2, height: 12 });
-    const barImg = await pdfRev.embedPng(barImgBuffer);
+    const barImg = await pdfRev.embedPng(await bwipjs.toBuffer({ bcid: 'pdf417', text: barText, scale: 2, height: 12 }));
     pageR.drawImage(barImg, { x: (wR / 2) - (246 / 2), y: 5, width: 170, height: 22 });
 
-    // CONVERSIÓN A PNG Y ENVÍO
-    const antBytes = await pdfAnt.save();
-    const revBytes = await pdfRev.save();
+    // CONVERSIÓN A PNG CON POPPLER
+    const fA_pdf = `anv_${safe(datos.placa)}.pdf`; const fR_pdf = `rev_${safe(datos.placa)}.pdf`;
+    fs.writeFileSync(fA_pdf, await pdfAnt.save()); fs.writeFileSync(fR_pdf, await pdfRev.save());
 
     bot.sendMessage(chatId, "📸 *Generando imágenes de alta resolución...*", { parse_mode: 'Markdown' });
 
     try {
-        const imgAnt = await pdfImg.convert(antBytes, { width: 1000 });
-        const imgRev = await pdfImg.convert(revBytes, { width: 1000 });
+        execSync(`pdftocairo -png -singlefile -r 300 ${fA_pdf} anv_${safe(datos.placa)}`);
+        execSync(`pdftocairo -png -singlefile -r 300 ${fR_pdf} rev_${safe(datos.placa)}`);
 
-        await bot.sendPhoto(chatId, imgAnt[0], { caption: `✅ Anverso - Placa: ${safe(datos.placa)}` });
-        await bot.sendPhoto(chatId, imgRev[0], { caption: `✅ Reverso - Placa: ${safe(datos.placa)}` });
+        await bot.sendPhoto(chatId, `anv_${safe(datos.placa)}.png`, { caption: `✅ Anverso - Placa: ${safe(datos.placa)}` });
+        await bot.sendPhoto(chatId, `rev_${safe(datos.placa)}.png`, { caption: `✅ Reverso - Placa: ${safe(datos.placa)}` });
+
+        // Limpieza
+        fs.unlinkSync(fA_pdf); fs.unlinkSync(fR_pdf);
+        fs.unlinkSync(`anv_${safe(datos.placa)}.png`); fs.unlinkSync(`rev_${safe(datos.placa)}.png`);
     } catch (e) {
         bot.sendMessage(chatId, "⚠️ Error convirtiendo a PNG, enviando PDF...");
-        const fA = `anverso_${safe(datos.placa)}.pdf`; const fR = `reverso_${safe(datos.placa)}.pdf`;
-        fs.writeFileSync(fA, antBytes); fs.writeFileSync(fR, revBytes);
-        await bot.sendDocument(chatId, fA); await bot.sendDocument(chatId, fR);
-        fs.unlinkSync(fA); fs.unlinkSync(fR);
+        await bot.sendDocument(chatId, fA_pdf); await bot.sendDocument(chatId, fR_pdf);
     }
 }
 
 bot.onText(/\/start/, (msg) => {
     if (!isAuthorized(msg)) return;
-    const welcome = `🚀 *TIVE Pro - AI Generation Suite*\n━━━━━━━━━━━━━━━━━━\nBienvenido al sistema automatizado de procesamiento TIVE.\n\n📥 *Instrucciones:*\n1. Envía el *PDF original* de la SUNARP.\n2. Selecciona el proceso en el menú interactivo.\n\n✨ *Servicios disponibles:*\n• 📝 *Generar Tarjetas TIVE*: Extracción con IA y salida en PNG.\n• 🔐 *Certificado con QR*: Inserción de código de verificación.\n\n_Esperando documento..._`;
+    const welcome = `🚀 *TIVE Pro - AI Generation Suite*\n━━━━━━━━━━━━━━━━━━\nBienvenido al sistema automatizado de procesamiento TIVE.\n\n📥 *Instrucciones:*\n1. Envía el *PDF original* de la SUNARP.\n2. Selecciona el proceso en el menú interactivo.\n\n✨ *Servicios disponibles:*\n• 📸 *Generar Tarjetas PNG (IA)*: Extracción con IA y salida en PNG.\n• 🔐 *Certificado con QR*: Inserción de código de verificación.\n\n_Esperando documento..._`;
     bot.sendMessage(msg.chat.id, welcome, { parse_mode: 'Markdown' });
 });
 
