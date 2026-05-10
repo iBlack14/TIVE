@@ -153,6 +153,18 @@ async function generarTIVE(chatId, datos, originalBuffer = null) {
     }
 }
 
+bot.onText(/\/start/, (msg) => {
+    if (!isAuthorized(msg)) return;
+    const chatId = msg.chat.id;
+    bot.sendMessage(chatId, 
+        '👋 ¡Hola! Soy el Bot TIVE IA.\n\n' +
+        '📄 Envíame un documento PDF de la SUNARP y te generaré:\n' +
+        '📸 Imágenes Anverso y Reverso (TIVE)\n' +
+        '🔲 Código QR y Códigos de Barras automáticos\n' +
+        '🧠 Extracción de datos usando IA'
+    );
+});
+
 bot.on('document', async (msg) => {
     if (!isAuthorized(msg)) return;
     const chatId = msg.chat.id;
@@ -178,3 +190,20 @@ bot.on('callback_query', async (query) => {
 });
 
 console.log("🤖 Bot TIVE IA Online!");
+
+// Manejo de apagado seguro para evitar Error 409 en Telegram durante los re-deploys
+const gracefulShutdown = () => {
+    console.log("🛑 Apagando el bot de forma segura...");
+    bot.stopPolling()
+        .then(() => {
+            console.log("✅ Polling detenido. Saliendo...");
+            process.exit(0);
+        })
+        .catch((err) => {
+            console.error("❌ Error deteniendo el bot:", err);
+            process.exit(1);
+        });
+};
+
+process.on('SIGINT', gracefulShutdown);
+process.on('SIGTERM', gracefulShutdown);
