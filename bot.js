@@ -52,20 +52,14 @@ async function extraerConIA(pdfBuffer) {
             Devuelve SOLO un objeto JSON con estas llaves exactas:
             zona, sede, partida, dua, titulo, fechaTitulo, placa, codVerif, tituloNo, fechaFinal, categoria, marca, modelo, color, añoModelo, version, vin, serie, motor, carroceria, potencia, formRod, combustible, asientos, pasajeros, ruedas, ejes, cilindros, longitud, altura, ancho, cilindrada, pBruto, pNeto, cargaUtil.
             Si no encuentras un valor, pon cadena vacía.`;
-            
             const result = await model.generateContent([{ inlineData: { data: pdfBuffer.toString("base64"), mimeType: "application/pdf" } }, { text: prompt }]);
-            const rawText = result.response.text();
-            console.log("IA Response:", rawText);
-            return JSON.parse(rawText.replace(/```json|```/g, "").trim());
-        } catch (e) { 
-            console.error(`Error con llave:`, e.message);
-            lastError = e; 
-        }
+            return JSON.parse(result.response.text().replace(/```json|```/g, "").trim());
+        } catch (e) { lastError = e; }
     }
     throw lastError;
 }
 
-async function generarTIVE(chatId, datos, qrCustomLink = null) {
+async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = null) {
     const fontB = await (await PDFDocument.create()).embedFont(StandardFonts.HelveticaBold);
     const gris = rgb(0.6, 0.6, 0.6);
     const negro = rgb(0, 0, 0);
@@ -109,13 +103,37 @@ async function generarTIVE(chatId, datos, qrCustomLink = null) {
     const barImg = await pdfRev.embedPng(await bwipjs.toBuffer({ bcid: 'pdf417', text: barText, scale: 2, height: 12 }));
     pageR.drawImage(barImg, { x: (wR / 2) - (246 / 2), y: 5, width: 170, height: 22 });
 
+    // --- RECORTE DE FIRMA ORIGINAL ---
+    if (originalBuffer) {
+        try {
+            const originalDoc = await PDFDocument.load(originalBuffer);
+            const [embeddedPage] = await pdfRev.embedPdf(originalDoc, [0]);
+            
+            // Área de la firma en el original (Aprox inferior derecha)
+            // Escala para ajustar el tamaño del recorte
+            const scale = 0.28; 
+            pageR.pushGraphicsState();
+            // Creamos un área de recorte en el reverso
+            pageR.drawRectangle({ x: 235, y: 3, width: 55, height: 26, color: rgb(1, 1, 1) });
+            pageR.clip(); 
+            // Dibujamos la página original desplazada para que solo se vea la firma
+            pageR.drawPage(embeddedPage, {
+                x: 235 - (405 * scale), // Desplazamiento X para encontrar la firma
+                y: 3 - (10 * scale),   // Desplazamiento Y
+                width: 595 * scale,
+                height: 842 * scale
+            });
+            pageR.popGraphicsState();
+        } catch (e) { console.error("Error recortando firma:", e.message); }
+    }
+
     const fA_pdf = `anv_${safe(datos.placa)}.pdf`; const fR_pdf = `rev_${safe(datos.placa)}.pdf`;
     fs.writeFileSync(fA_pdf, await pdfAnt.save()); fs.writeFileSync(fR_pdf, await pdfRev.save());
 
     try {
         execSync(`pdftocairo -png -singlefile -r 300 ${fA_pdf} anv_${safe(datos.placa)}`);
         execSync(`pdftocairo -png -singlefile -r 300 ${fR_pdf} rev_${safe(datos.placa)}`);
-        await bot.sendPhoto(chatId, `anv_${safe(datos.placa)}.png`, { caption: `✅ Anverso - Placa: ${safe(datos.placa)}` });
+        await bot.sendPhoto(chatId, `anv_${safe(datos.placa)}.png`, { caption: `✅ Anverso - QR: ${finalQR}` });
         await bot.sendPhoto(chatId, `rev_${safe(datos.placa)}.png`, { caption: `✅ Reverso` });
         fs.unlinkSync(fA_pdf); fs.unlinkSync(fR_pdf); fs.unlinkSync(`anv_${safe(datos.placa)}.png`); fs.unlinkSync(`rev_${safe(datos.placa)}.png`);
     } catch (e) {
@@ -154,8 +172,7 @@ bot.on('callback_query', async (query) => {
         bot.sendMessage(chatId, "🧠 Procesando con IA...");
         try { 
             const datos = await extraerConIA(buffer);
-            if (!datos.placa) bot.sendMessage(chatId, "⚠️ Advertencia: No se detectó placa.");
-            await generarTIVE(chatId, datos); 
+            await generarTIVE(chatId, datos, null, buffer); 
         } catch (e) { bot.sendMessage(chatId, "❌ Error: " + e.message); }
     }
     bot.answerCallbackQuery(query.id);
@@ -170,7 +187,7 @@ bot.on('message', async (msg) => {
         bot.sendMessage(chatId, `🧠 Procesando con IA...`);
         try { 
             const datos = await extraerConIA(buffer);
-            await generarTIVE(chatId, datos, customLink); 
+            await generarTIVE(chatId, datos, customLink, buffer); 
         } catch (e) { bot.sendMessage(chatId, "❌ Error: " + e.message); }
     }
 });
