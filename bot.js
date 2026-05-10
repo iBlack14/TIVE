@@ -103,27 +103,18 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
     const barImg = await pdfRev.embedPng(await bwipjs.toBuffer({ bcid: 'pdf417', text: barText, scale: 2, height: 12 }));
     pageR.drawImage(barImg, { x: (wR / 2) - (246 / 2), y: 5, width: 170, height: 22 });
 
-    // --- RECORTE DE FIRMA ORIGINAL ---
+    // --- RECORTE DE FIRMA CON POPPLER (MUCHO MEJOR) ---
+    const sigPath = `sig_${safe(datos.placa)}.png`;
+    const tmpPdf = `tmp_${safe(datos.placa)}.pdf`;
     if (originalBuffer) {
         try {
-            const originalDoc = await PDFDocument.load(originalBuffer);
-            const [embeddedPage] = await pdfRev.embedPdf(originalDoc, [0]);
-            
-            // Área de la firma en el original (Aprox inferior derecha)
-            // Escala para ajustar el tamaño del recorte
-            const scale = 0.28; 
-            pageR.pushGraphicsState();
-            // Creamos un área de recorte en el reverso
-            pageR.drawRectangle({ x: 235, y: 3, width: 55, height: 26, color: rgb(1, 1, 1) });
-            pageR.clip(); 
-            // Dibujamos la página original desplazada para que solo se vea la firma
-            pageR.drawPage(embeddedPage, {
-                x: 235 - (405 * scale), // Desplazamiento X para encontrar la firma
-                y: 3 - (10 * scale),   // Desplazamiento Y
-                width: 595 * scale,
-                height: 842 * scale
-            });
-            pageR.popGraphicsState();
+            fs.writeFileSync(tmpPdf, originalBuffer);
+            // Recortamos el área de la firma directamente desde el PDF original
+            // Coordenadas calibradas para SUNARP
+            execSync(`pdftocairo -png -singlefile -x 430 -y 760 -W 140 -H 60 -r 300 ${tmpPdf} sig_${safe(datos.placa)}`);
+            const sigImg = await pdfRev.embedPng(fs.readFileSync(sigPath));
+            pageR.drawImage(sigImg, { x: 235, y: 5, width: 55, height: 24 });
+            fs.unlinkSync(sigPath); fs.unlinkSync(tmpPdf);
         } catch (e) { console.error("Error recortando firma:", e.message); }
     }
 
