@@ -26,7 +26,7 @@ const isAuthorized = (msg) => {
     return msg.from.id.toString() === ADMIN_ID.toString();
 };
 
-const safe = (t) => t ? String(t).toUpperCase() : '';
+const safe = (t) => t ? String(t).trim() : '';
 
 // --- FUNCIONES TÉCNICAS ---
 const C128_PATTERNS = { '0': '11011001100', '1': '11001101100', '2': '11001100110', '3': '10001101100', '4': '10001100110', '5': '10110000110', '6': '10110000110', '7': '10110110000', '8': '10110011011', '9': '11001011000', 'A': '11000101100', 'B': '11000100110', 'C': '11011000100', 'D': '11011000010', 'E': '11011011000', 'F': '11011001101', 'G': '11011011011', 'H': '11001101101', 'I': '11001101111', 'J': '11011110110', 'K': '11011111011', 'L': '11110110110', 'M': '11110110111', 'N': '11110111101', 'O': '11110111111', 'P': '11001101101', 'Q': '11001101111', 'R': '11011110110', 'S': '11011111011', 'T': '11110110110', 'U': '11110110111', 'V': '11110111101', 'W': '11110111111', 'X': '11001101101', 'Y': '11001101111', 'Z': '11011110110', '-': '11000111010', '.': '11011011110', ' ': '11011011011', ':': '11011111010' };
@@ -105,9 +105,9 @@ async function generarTIVE(chatId, datos) {
     dR(datos.cilindrada, 203, 121); dR(datos.pBruto, 203, 127.8);
     dR(datos.pNeto, 203, 134.6); dR(datos.cargaUtil, 203, 142);
 
-    const barText = `CATEGORIA:${safe(datos.categoria)}|MARCA:${safe(datos.marca)}|MODELO:${safe(datos.modelo)}|VIN:${safe(datos.vin)}|MOTOR:${safe(datos.motor)}`;
+    const barText = `CATEGORIA:${safe(datos.categoria)}|MARCA:${safe(datos.marca)}|MODELO:${safe(datos.modelo)}|ANO_MODELO:${safe(datos.añoModelo)}|VERSION:${safe(datos.version)}|COLOR:${safe(datos.color)}|VIN:${safe(datos.vin)}|SERIE:${safe(datos.serie)}|NUMERO_MOTOR:${safe(datos.motor)}|CARROCERIA:${safe(datos.carroceria)}|POTENCIA:${safe(datos.potencia)}|FORMA_DE_RODAJE:${safe(datos.formRod)}|COMBUSTIBLE:${safe(datos.combustible)}|ASIENTOS:${safe(datos.asientos)}|PASAJEROS:${safe(datos.pasajeros)}|RUEDAS:${safe(datos.ruedas)}|EJES:${safe(datos.ejes)}|CILINDROS:${safe(datos.cilindros)}|LONGITUD:${safe(datos.longitud)}|ALTURA:${safe(datos.altura)}|ANCHO:${safe(datos.ancho)}|CILINDRADA:${safe(datos.cilindrada)}|PESO_BRUTO:${safe(datos.pBruto)}|PESO_NETO:${safe(datos.pNeto)}|CARGA_UTIL:${safe(datos.cargaUtil)}`;
     const barImg = await pdfRev.embedPng(await bwipjs.toBuffer({ bcid: 'pdf417', text: barText, scale: 2, height: 12 }));
-    pageR.drawImage(barImg, { x: (wR/2)-(170/2), y: 4, width: 170, height: 22 });
+    pageR.drawImage(barImg, { x: (wR / 2) - (246 / 2), y: 5, width: 170, height: 22 });
 
     const fA = `anverso_${safe(datos.placa)}.pdf`; const fR = `reverso_${safe(datos.placa)}.pdf`;
     fs.writeFileSync(fA, await pdfAnt.save()); fs.writeFileSync(fR, await pdfRev.save());
@@ -117,7 +117,19 @@ async function generarTIVE(chatId, datos) {
 
 bot.onText(/\/start/, (msg) => {
     if (!isAuthorized(msg)) return;
-    bot.sendMessage(msg.chat.id, "👋 ¡Hola! Soy el Bot TIVE Pro.\n\n1. Envíame un PDF.\n2. Elige si quieres generar las **Tarjetas TIVE (IA)** o el **QR de Verificación**.");
+    const welcome = 
+        `🚀 *TIVE Pro - AI Generation Suite*\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `Bienvenido al sistema automatizado de procesamiento TIVE.\n\n` +
+        `📥 *Instrucciones:*\n` +
+        `1. Envía el *PDF original* de la SUNARP.\n` +
+        `2. Selecciona el proceso en el menú interactivo.\n\n` +
+        `✨ *Servicios disponibles:*\n` +
+        `• 📝 *Generar Tarjetas TIVE*: Extracción con IA y diseño calibrado.\n` +
+        `• 🔐 *Certificado con QR*: Inserción de código de verificación.\n\n` +
+        `_Esperando documento..._`;
+    
+    bot.sendMessage(msg.chat.id, welcome, { parse_mode: 'Markdown' });
 });
 
 bot.on('document', async (msg) => {
