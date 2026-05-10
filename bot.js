@@ -50,8 +50,12 @@ function getTemplatePath(name) {
         path.join(process.cwd(), 'tarjeta', name),
         path.join(process.cwd(), name)
     ];
+    console.log(`🔎 Buscando ${name} en:`, p);
     for (const pathFound of p) {
-        if (fs.existsSync(pathFound)) return pathFound;
+        if (fs.existsSync(pathFound)) {
+            console.log(`✅ Encontrado en: ${pathFound}`);
+            return pathFound;
+        }
     }
     throw new Error(`No se encontró la plantilla ${name}. Asegúrate de que esté en la carpeta 'tarjeta' o en la raíz.`);
 }
