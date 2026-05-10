@@ -42,22 +42,10 @@ function drawRealBarcode(page, text, x, y, width, height) {
     }
 }
 
-// BÚSQUEDA FLEXIBLE DE PLANTILLAS
 function getTemplatePath(name) {
-    const p = [
-        path.join(__dirname, 'tarjeta', name),
-        path.join(__dirname, name),
-        path.join(process.cwd(), 'tarjeta', name),
-        path.join(process.cwd(), name)
-    ];
-    console.log(`🔎 Buscando ${name} en:`, p);
-    for (const pathFound of p) {
-        if (fs.existsSync(pathFound)) {
-            console.log(`✅ Encontrado en: ${pathFound}`);
-            return pathFound;
-        }
-    }
-    throw new Error(`No se encontró la plantilla ${name}. Asegúrate de que esté en la carpeta 'tarjeta' o en la raíz.`);
+    const p = [path.join(__dirname, 'tarjeta', name), path.join(__dirname, name), path.join(process.cwd(), 'tarjeta', name), path.join(process.cwd(), name)];
+    for (const pathFound of p) { if (fs.existsSync(pathFound)) return pathFound; }
+    throw new Error(`No se encontró la plantilla ${name}.`);
 }
 
 async function extraerConIA(pdfBuffer) {
@@ -76,42 +64,49 @@ async function extraerConIA(pdfBuffer) {
 
 async function generarTIVE(chatId, datos) {
     const fontB = await (await PDFDocument.create()).embedFont(StandardFonts.HelveticaBold);
-    
-    // Anverso
-    const antPath = getTemplatePath('adelantexd.pdf');
-    const pdfAnt = await PDFDocument.load(fs.readFileSync(antPath));
+    const gris = rgb(0.6, 0.6, 0.6);
+    const negro = rgb(0, 0, 0);
+
+    // --- ANVERSO (Coordenadas exactas generar_tarjeta.js) ---
+    const pdfAnt = await PDFDocument.load(fs.readFileSync(getTemplatePath('adelantexd.pdf')));
     const pageA = pdfAnt.getPages()[0];
     const { height: hA } = pageA.getSize();
-    const dA = (t, x, y, size = 6.5) => pageA.drawText(safe(t), { x, y: hA - y, size, font: fontB });
+    
+    pageA.drawText(safe(datos.zona),        { x: 60,   y: hA - 56,    size: 5.5, font: fontB, color: gris });
+    pageA.drawText(safe(datos.sede),        { x: 55,   y: hA - 63,    size: 5.5, font: fontB, color: gris });
+    pageA.drawText(safe(datos.partida),     { x: 65,   y: hA - 75,    size: 6.8, font: fontB, color: negro });
+    pageA.drawText(safe(datos.dua),         { x: 50,   y: hA - 89,    size: 6.8, font: fontB, color: negro });
+    pageA.drawText(safe(datos.titulo),      { x: 34.5, y: hA - 104,   size: 6.8, font: fontB, color: negro });
+    pageA.drawText(safe(datos.fechaTitulo), { x: 65,   y: hA - 117,   size: 6.8, font: fontB, color: negro });
+    pageA.drawText(safe(datos.placa),       { x: 162,  y: hA - 115,   size: 17.9, font: fontB, color: negro });
+    pageA.drawText(safe(datos.codVerif),    { x: 213,  y: hA - 142,   size: 4.5, font: fontB, color: negro });
+    pageA.drawText(safe(datos.tituloNo),    { x: 183,  y: hA - 149.5, size: 4.5, font: fontB, color: negro });
+    pageA.drawText(safe(datos.fechaFinal),  { x: 177,  y: hA - 158,   size: 4.5, font: fontB, color: negro });
 
-    dA(datos.zona, 60, 56, 5.5); dA(datos.sede, 55, 63, 5.5);
-    dA(datos.partida, 65, 75); dA(datos.dua, 50, 89);
-    dA(datos.titulo, 34.5, 104); dA(datos.fechaTitulo, 65, 117);
-    dA(datos.placa, 162, 115, 17.5);
     drawRealBarcode(pageA, datos.placa, 10, hA - 168, 80, 15);
     const qrImg = await pdfAnt.embedPng(await QRCode.toDataURL(`https://tive.sunarp.gob.pe/ver/${safe(datos.placa)}`, { margin: 1 }));
     pageA.drawImage(qrImg, { x: 100, y: hA - 170, width: 52, height: 52 });
 
-    // Reverso
-    const revPath = getTemplatePath('atrasxd.pdf');
-    const pdfRev = await PDFDocument.load(fs.readFileSync(revPath));
+    // --- REVERSO (Coordenadas exactas generar_tarjeta_reverso.js) ---
+    const pdfRev = await PDFDocument.load(fs.readFileSync(getTemplatePath('atrasxd.pdf')));
     const pageR = pdfRev.getPages()[0];
     const { height: hR, width: wR } = pageR.getSize();
-    const dR = (t, x, y, size = 4.8) => pageR.drawText(safe(t), { x, y: hR - y, size, font: fontB });
+    const dR = (t, x, y, size = 4.5) => pageR.drawText(safe(t), { x, y: hR - y, size, font: fontB, color: negro });
 
     dR(datos.categoria, 37, 40.5); dR(datos.marca, 37, 47.5); dR(datos.modelo, 37, 54.5);
-    dR(datos.color, 37, 61.5); dR(datos.vin, 60, 69.5); dR(datos.serie, 60, 76.5);
-    dR(datos.motor, 60, 83.5); dR(datos.carroceria, 60, 90.5); dR(datos.potencia, 48, 97.5);
-    dR(datos.formRod, 48, 104.5); dR(datos.combustible, 52, 111.5);
-    dR(datos.añoModelo, 226, 39); dR(datos.version, 153, 100);
-    dR(datos.asientos, 46, 122, 4.2); dR(datos.pasajeros, 46, 129, 4.2);
-    dR(datos.ruedas, 46, 134.9, 4.2); dR(datos.ejes, 46, 141.9, 4.2);
-    dR(datos.cilindros, 117, 121, 4.2); dR(datos.longitud, 117, 127.8, 4.2);
-    dR(datos.altura, 117, 134.6, 4.2); dR(datos.ancho, 117, 141.4, 4.2);
-    dR(datos.cilindrada, 205, 121, 4.2); dR(datos.pBruto, 205, 127.8, 4.2);
-    dR(datos.pNeto, 205, 134.6, 4.2); dR(datos.cargaUtil, 205, 142, 4.2);
+    dR(datos.color, 37, 61.5); dR(datos.vin, 59, 69.5); dR(datos.serie, 59, 76.5);
+    dR(datos.motor, 59, 83.5); dR(datos.carroceria, 59, 90.5); dR(datos.potencia, 45, 97.5);
+    dR(datos.formRod, 45, 104.5); dR(datos.combustible, 50, 111.5);
+    dR(datos.añoModelo, 225, 39); dR(datos.version, 151, 100);
+    dR(datos.asientos, 45, 122); dR(datos.pasajeros, 45, 129);
+    dR(datos.ruedas, 45, 134.9); dR(datos.ejes, 45, 141.9);
+    dR(datos.cilindros, 115, 121); dR(datos.longitud, 115, 127.8);
+    dR(datos.altura, 115, 134.6); dR(datos.ancho, 115, 141.4);
+    dR(datos.cilindrada, 203, 121); dR(datos.pBruto, 203, 127.8);
+    dR(datos.pNeto, 203, 134.6); dR(datos.cargaUtil, 203, 142);
 
-    const barImg = await pdfRev.embedPng(await bwipjs.toBuffer({ bcid: 'pdf417', text: `CAT:${safe(datos.categoria)}|VIN:${safe(datos.vin)}`, scale: 2, height: 12 }));
+    const barText = `CATEGORIA:${safe(datos.categoria)}|MARCA:${safe(datos.marca)}|MODELO:${safe(datos.modelo)}|VIN:${safe(datos.vin)}|MOTOR:${safe(datos.motor)}`;
+    const barImg = await pdfRev.embedPng(await bwipjs.toBuffer({ bcid: 'pdf417', text: barText, scale: 2, height: 12 }));
     pageR.drawImage(barImg, { x: (wR/2)-(170/2), y: 4, width: 170, height: 22 });
 
     const fA = `anverso_${safe(datos.placa)}.pdf`; const fR = `reverso_${safe(datos.placa)}.pdf`;
@@ -128,33 +123,20 @@ bot.onText(/\/start/, (msg) => {
 bot.on('document', async (msg) => {
     if (!isAuthorized(msg)) return;
     const chatId = msg.chat.id;
-    const fileId = msg.document.file_id;
-    const fileStream = bot.getFileStream(fileId);
+    const fileStream = bot.getFileStream(msg.document.file_id);
     const chunks = [];
     for await (const chunk of fileStream) { chunks.push(chunk); }
     userPdfs.set(chatId, Buffer.concat(chunks));
-
-    bot.sendMessage(chatId, "📄 PDF recibido. ¿Qué deseas hacer?", {
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: "📝 Generar Tarjetas TIVE (IA)", callback_data: "tive" }],
-                [{ text: "🔐 Insertar QR Verificación", callback_data: "qr" }]
-            ]
-        }
-    });
+    bot.sendMessage(chatId, "📄 PDF recibido. ¿Qué deseas hacer?", { reply_markup: { inline_keyboard: [[{ text: "📝 Generar Tarjetas TIVE (IA)", callback_data: "tive" }], [{ text: "🔐 Insertar QR Verificación", callback_data: "qr" }]] } });
 });
 
 bot.on('callback_query', async (query) => {
     const chatId = query.message.chat.id;
     const buffer = userPdfs.get(chatId);
     if (!buffer) return bot.sendMessage(chatId, "❌ Reenvía el PDF.");
-
     if (query.data === "tive") {
         bot.sendMessage(chatId, "🧠 Procesando con IA...");
-        try {
-            const d = await extraerConIA(buffer);
-            await generarTIVE(chatId, d);
-        } catch (e) { bot.sendMessage(chatId, "❌ Error: " + e.message); }
+        try { await generarTIVE(chatId, await extraerConIA(buffer)); } catch (e) { bot.sendMessage(chatId, "❌ Error: " + e.message); }
     }
     bot.answerCallbackQuery(query.id);
 });
