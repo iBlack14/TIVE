@@ -8,16 +8,10 @@ const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 require('dotenv').config();
 
-// --- CONFIGURACIÓN SEGURA ---
+// --- CONFIGURACIÓN ---
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = process.env.ADMIN_ID;
-
-// Leemos las llaves desde la variable de entorno GEMINI_KEYS (separadas por coma)
 const API_KEYS = (process.env.GEMINI_KEYS || "").split(",").map(k => k.trim()).filter(k => k);
-
-if (API_KEYS.length === 0) {
-    console.error("❌ ERROR: No se encontraron llaves en GEMINI_KEYS. Configúralas en Easypanel.");
-}
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 const userPdfs = new Map();
@@ -53,11 +47,18 @@ async function extraerConIA(pdfBuffer) {
         try {
             const genAI = new GoogleGenerativeAI(key);
             const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
-            const prompt = `Analiza este documento TIVE. Extrae datos y devuelve SOLO JSON con llaves exactas: zona, sede, partida, dua, titulo, fechaTitulo, placa, codVerif, tituloNo, fechaFinal, categoria, marca, modelo, color, añoModelo, version, vin, serie, motor, carroceria, potencia, formRod, combustible, asientos, pasajeros, ruedas, ejes, cilindros, longitud, altura, ancho, cilindrada, pBruto, pNeto, cargaUtil.`;
+            const prompt = `Analiza este documento TIVE (Tarjeta de Identificación Vehicular Electrónica) de SUNARP. 
+            Extrae TODOS los datos técnicos y registrales. Es CRÍTICO que encuentres la PLACA.
+            Devuelve SOLO un objeto JSON con estas llaves exactas:
+            zona, sede, partida, dua, titulo, fechaTitulo, placa, codVerif, tituloNo, fechaFinal, categoria, marca, modelo, color, añoModelo, version, vin, serie, motor, carroceria, potencia, formRod, combustible, asientos, pasajeros, ruedas, ejes, cilindros, longitud, altura, ancho, cilindrada, pBruto, pNeto, cargaUtil.
+            Si no encuentras un valor, pon cadena vacía.`;
+            
             const result = await model.generateContent([{ inlineData: { data: pdfBuffer.toString("base64"), mimeType: "application/pdf" } }, { text: prompt }]);
-            return JSON.parse(result.response.text().replace(/```json|```/g, "").trim());
+            const rawText = result.response.text();
+            console.log("IA Response:", rawText);
+            return JSON.parse(rawText.replace(/```json|```/g, "").trim());
         } catch (e) { 
-            console.error(`Error con llave ${key.substring(0,5)}...:`, e.message);
+            console.error(`Error con llave:`, e.message);
             lastError = e; 
         }
     }
@@ -69,6 +70,7 @@ async function generarTIVE(chatId, datos, qrCustomLink = null) {
     const gris = rgb(0.6, 0.6, 0.6);
     const negro = rgb(0, 0, 0);
 
+    // ANVERSO
     const pdfAnt = await PDFDocument.load(fs.readFileSync(getTemplatePath('adelantexd.pdf')));
     const pageA = pdfAnt.getPages()[0];
     const { height: hA } = pageA.getSize();
@@ -87,6 +89,7 @@ async function generarTIVE(chatId, datos, qrCustomLink = null) {
     const qrImg = await pdfAnt.embedPng(await QRCode.toDataURL(finalQR, { margin: 1 }));
     pageA.drawImage(qrImg, { x: 100, y: hA - 170, width: 52, height: 52 });
 
+    // REVERSO
     const pdfRev = await PDFDocument.load(fs.readFileSync(getTemplatePath('atrasxd.pdf')));
     const pageR = pdfRev.getPages()[0];
     const { height: hR, width: wR } = pageR.getSize();
@@ -112,7 +115,7 @@ async function generarTIVE(chatId, datos, qrCustomLink = null) {
     try {
         execSync(`pdftocairo -png -singlefile -r 300 ${fA_pdf} anv_${safe(datos.placa)}`);
         execSync(`pdftocairo -png -singlefile -r 300 ${fR_pdf} rev_${safe(datos.placa)}`);
-        await bot.sendPhoto(chatId, `anv_${safe(datos.placa)}.png`, { caption: `✅ Anverso - QR: ${finalQR}` });
+        await bot.sendPhoto(chatId, `anv_${safe(datos.placa)}.png`, { caption: `✅ Anverso - Placa: ${safe(datos.placa)}` });
         await bot.sendPhoto(chatId, `rev_${safe(datos.placa)}.png`, { caption: `✅ Reverso` });
         fs.unlinkSync(fA_pdf); fs.unlinkSync(fR_pdf); fs.unlinkSync(`anv_${safe(datos.placa)}.png`); fs.unlinkSync(`rev_${safe(datos.placa)}.png`);
     } catch (e) {
@@ -142,14 +145,18 @@ bot.on('callback_query', async (query) => {
 
     if (query.data === "ask_qr") {
         userState.set(chatId, "awaiting_qr");
-        bot.sendMessage(chatId, "🔗 *Configuración de QR*\n\nEnvía el enlace personalizado para el código QR o presiona el botón para usar el enlace oficial de SUNARP.", {
+        bot.sendMessage(chatId, "🔗 *Configuración de QR*\n\nEnvía el enlace personalizado para el QR o presiona el botón para el oficial.", {
             parse_mode: 'Markdown',
             reply_markup: { inline_keyboard: [[{ text: "🏛️ Usar Link Oficial SUNARP", callback_data: "use_official" }]] }
         });
     } else if (query.data === "use_official") {
         userState.delete(chatId);
-        bot.sendMessage(chatId, "🧠 Procesando con IA y Link Oficial...");
-        try { await generarTIVE(chatId, await extraerConIA(buffer)); } catch (e) { bot.sendMessage(chatId, "❌ Error: " + e.message); }
+        bot.sendMessage(chatId, "🧠 Procesando con IA...");
+        try { 
+            const datos = await extraerConIA(buffer);
+            if (!datos.placa) bot.sendMessage(chatId, "⚠️ Advertencia: No se detectó placa.");
+            await generarTIVE(chatId, datos); 
+        } catch (e) { bot.sendMessage(chatId, "❌ Error: " + e.message); }
     }
     bot.answerCallbackQuery(query.id);
 });
@@ -160,8 +167,11 @@ bot.on('message', async (msg) => {
         const customLink = msg.text;
         const buffer = userPdfs.get(chatId);
         userState.delete(chatId);
-        bot.sendMessage(chatId, `🧠 Procesando con IA y Link: ${customLink}`);
-        try { await generarTIVE(chatId, await extraerConIA(buffer), customLink); } catch (e) { bot.sendMessage(chatId, "❌ Error: " + e.message); }
+        bot.sendMessage(chatId, `🧠 Procesando con IA...`);
+        try { 
+            const datos = await extraerConIA(buffer);
+            await generarTIVE(chatId, datos, customLink); 
+        } catch (e) { bot.sendMessage(chatId, "❌ Error: " + e.message); }
     }
 });
 
