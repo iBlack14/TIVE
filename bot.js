@@ -311,13 +311,6 @@ bot.on('callback_query', async (query) => {
 
         const hash = crypto.createHash('sha256').update(buffer).digest('hex').toUpperCase();
         
-        // Guardar el original para que el link funcione siempre
-        const finalPath = path.join(uploadDir, `${hash}.pdf`);
-        if (!fs.existsSync(finalPath)) {
-            fs.writeFileSync(finalPath, buffer);
-            console.log(`[BOT] 📁 PDF original guardado: ${hash}.pdf`);
-        }
-
         // Llamamos directamente a la inserción usando "CERTIFICADO" como nombre por defecto
         try {
             await finalizarInsercionQR(chatId, buffer, "CERTIFICADO", hash, messageId);
@@ -372,9 +365,6 @@ bot.on('message', async (msg) => {
         try {
             // Generar hash para que el link funcione
             const hash = crypto.createHash('sha256').update(buffer).digest('hex').toUpperCase();
-            // Guardar en disco si no existe
-            const finalPath = path.join(uploadDir, `${hash}.pdf`);
-            if (!fs.existsSync(finalPath)) fs.writeFileSync(finalPath, buffer);
 
             await finalizarInsercionQR(chatId, buffer, plate, hash);
         } catch (e) {
@@ -411,6 +401,14 @@ async function finalizarInsercionQR(chatId, buffer, placa, hash, messageId = nul
     });
     
     const pdfBytes = await pdfDoc.save();
+    
+    // GUARDAR EL PDF YA EDITADO (CON QR) EN EL SERVIDOR
+    const finalPath = path.join(uploadDir, `${hash}.pdf`);
+    if (!fs.existsSync(finalPath)) {
+        fs.writeFileSync(finalPath, Buffer.from(pdfBytes));
+        console.log(`[BOT] 📁 PDF EDITADO guardado en servidor: ${hash}.pdf`);
+    }
+
     const fileName = `VERIFICADO_${placa}_${hash.substring(0,8)}.pdf`;
     
     await bot.sendDocument(chatId, Buffer.from(pdfBytes), { 
