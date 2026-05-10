@@ -3,6 +3,6 @@ npm-debug.log
 .env
 .git
 servicio/verCertificado/*
-*.pdf
-*.png
-*.jpg
+
+# Permitir los PDFs de la carpeta tarjeta, pero ignorar los demás
+!tarjeta/*.pdf
