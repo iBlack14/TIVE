@@ -1,6 +1,7 @@
 process.env.NTBA_FIX_350 = 1;
 const TelegramBot = require('node-telegram-bot-api');
 const QRCode = require('qrcode');
+const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const bwipjs = require('bwip-js');
@@ -23,6 +24,13 @@ const API_KEYS = (process.env.GEMINI_KEYS || "").split(",").map(k => k.trim()).f
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 const userPdfs = new Map();
 const userState = new Map();
+
+// Configuración de persistencia para certificados por HASH
+let DOMAIN = process.env.DOMAIN_URL || 'http://localhost:4000';
+if (DOMAIN.endsWith('/')) DOMAIN = DOMAIN.slice(0, -1);
+
+const uploadDir = path.join(__dirname, 'servicio', 'verCertificado');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 // Desactivado temporalmente para permitir trabajar en local sin restricciones de ID
 const isAuthorized = (msg) => true; // !ADMIN_ID || msg.from.id.toString() === ADMIN_ID.toString();
@@ -103,7 +111,24 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
     pageA.drawText(safe(datos.codVerif), { x: 213, y: hA - 142, size: 4.5, font: fontBAnt, color: negro });
     pageA.drawText(safe(datos.tituloNo), { x: 183, y: hA - 149.5, size: 4.5, font: fontBAnt, color: negro });
     pageA.drawText(safe(datos.fechaFinal), { x: 177, y: hA - 158, size: 4.5, font: fontBAnt, color: negro });
-    drawRealBarcode(pageA, datos.placa, 10, hA - 172, 110, 28);
+    // Generar código de barras horizontal profesional (Anverso)
+    const barImgAnv = await bwipjs.toBuffer({
+        bcid: 'code128',
+        text: safe(datos.placa),
+        scale: 4,           // Escala óptima
+        height: 15,         // Barras más altas para mejor escaneo
+        includetext: false, // ELIMINAMOS EL TEXTO DE ABAJO
+    });
+    const pngBarAnv = await pdfAnt.embedPng(barImgAnv);
+    
+    // Dibujamos el código con las medidas exactas pedidas (82x18)
+    pageA.drawImage(pngBarAnv, { 
+        x: 10, 
+        y: hA - 168, 
+        width: 82, 
+        height: 18 
+    });
+
     const finalQR = qrCustomLink || `https://tive.sunarp.gob.pe/ver/${safe(datos.placa)}`;
     const qrImg = await pdfAnt.embedPng(await QRCode.toDataURL(finalQR, { margin: 1 }));
     pageA.drawImage(qrImg, { x: 100, y: hA - 170, width: 52, height: 52 });
@@ -230,8 +255,8 @@ bot.on('document', async (msg) => {
             parse_mode: 'Markdown',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: "📸 Generar TIVE Completa (IA)", callback_data: "ask_qr" }],
-                    [{ text: "🖼️ Solo Imágenes Anverso/Reverso", callback_data: "qr" }]
+                    [{ text: "🚀 Generar Tarjetas TIVE (IA)", callback_data: "ask_qr" }],
+                    [{ text: "🔐 Insertar QR en PDF Original", callback_data: "insert_qr_only" }]
                 ]
             }
         };
@@ -275,6 +300,26 @@ bot.on('callback_query', async (query) => {
                 }
             }
         );
+    } else if (query.data === "insert_qr_only") {
+        console.log(`[BOT] 🔐 Iniciando inserción de QR con Hash (Sin IA).`);
+        bot.editMessageText(`🔐 *Generando Certificado por Hash...*`, { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' });
+
+        const hash = crypto.createHash('sha256').update(buffer).digest('hex').toUpperCase();
+        
+        // Guardar el original para que el link funcione siempre
+        const finalPath = path.join(uploadDir, `${hash}.pdf`);
+        if (!fs.existsSync(finalPath)) {
+            fs.writeFileSync(finalPath, buffer);
+            console.log(`[BOT] 📁 PDF original guardado: ${hash}.pdf`);
+        }
+
+        // Llamamos directamente a la inserción usando "CERTIFICADO" como nombre por defecto
+        try {
+            await finalizarInsercionQR(chatId, buffer, "CERTIFICADO", hash, messageId);
+        } catch (e) {
+            console.error(`[BOT] ❌ Error insertando QR:`, e);
+            bot.sendMessage(chatId, `❌ *Error:* ${escapeMarkdown(e.message)}`, { parse_mode: 'Markdown' });
+        }
     } else if (query.data === "use_official") {
         console.log(`[BOT] 🏢 Eligió usar link oficial.`);
         userState.delete(chatId);
@@ -292,29 +337,91 @@ bot.on('callback_query', async (query) => {
             bot.deleteMessage(chatId, messageId).catch(() => { });
         } catch (e) {
             console.error(`[BOT] ❌ Error en flujo principal:`, e);
-            bot.sendMessage(chatId, `❌ *Error en el proceso:* ${e.message}`, { parse_mode: 'Markdown' });
+            bot.sendMessage(chatId, `❌ *Error en el proceso:* ${escapeMarkdown(e.message)}`, { parse_mode: 'Markdown' });
         }
     }
 });
 
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
-    if (userState.get(chatId) === "awaiting_qr" && msg.text && !msg.text.startsWith('/')) {
+    const state = userState.get(chatId);
+    const buffer = userPdfs.get(chatId);
+
+    if (state === "awaiting_qr" && msg.text && !msg.text.startsWith('/')) {
         const customLink = msg.text;
-        console.log(`[BOT] 🔗 Link personalizado recibido: ${customLink}`);
-        const buffer = userPdfs.get(chatId);
         userState.delete(chatId);
         bot.sendMessage(chatId, `🧠 Procesando con IA...`);
-        try {
+        try { 
             const datos = await extraerConIA(buffer);
             if (!datos.placa) bot.sendMessage(chatId, "⚠️ Advertencia: No se detectó placa.");
             await generarTIVE(chatId, datos, customLink, buffer);
-        } catch (e) {
+        } catch (e) { 
             console.error(`[BOT] ❌ Error en flujo custom:`, e);
-            bot.sendMessage(chatId, "❌ Error: " + e.message);
+            bot.sendMessage(chatId, "❌ Error: " + escapeMarkdown(e.message), { parse_mode: 'Markdown' }); 
+        }
+    } else if (state === "awaiting_plate_for_qr") {
+        const plate = msg.text.toUpperCase().trim();
+        userState.delete(chatId);
+        
+        bot.sendMessage(chatId, `⏳ Generando PDF con QR para la placa *${plate}*...`, { parse_mode: 'Markdown' });
+        try {
+            // Generar hash para que el link funcione
+            const hash = crypto.createHash('sha256').update(buffer).digest('hex').toUpperCase();
+            // Guardar en disco si no existe
+            const finalPath = path.join(uploadDir, `${hash}.pdf`);
+            if (!fs.existsSync(finalPath)) fs.writeFileSync(finalPath, buffer);
+
+            await finalizarInsercionQR(chatId, buffer, plate, hash);
+        } catch (e) {
+            bot.sendMessage(chatId, `❌ Error: ${e.message}`);
         }
     }
 });
+
+async function finalizarInsercionQR(chatId, buffer, placa, hash, messageId = null) {
+    const pdfDoc = await PDFDocument.load(buffer);
+    const page = pdfDoc.getPages()[0];
+    const { width, height } = page.getSize();
+    console.log(`[BOT] 📐 Dimensiones del PDF original: ${width}x${height}`);
+    
+    // El QR ahora apunta a la ruta inteligente que gestiona visor nativo (PC) y descarga (Móvil)
+    const qrUrl = `${DOMAIN}/verCertificado/${hash}`;
+    const qrImg = await pdfDoc.embedPng(await QRCode.toDataURL(qrUrl, { 
+        margin: 1,
+        color: { dark: '#000000', light: '#ffffff' }
+    }));
+    
+    // Posición "Clásica" (Arriba a la izquierda, similar a tus plantillas viejas)
+    const qrSize = 90;
+    const posX = 30; 
+    const posY = height - qrSize - 30; // 30px desde el borde superior
+
+    console.log(`[BOT] 📍 Pegando QR Clásico en X:${posX}, Y:${posY}`);
+    
+    page.drawImage(qrImg, { 
+        x: posX, 
+        y: posY, 
+        width: qrSize, 
+        height: qrSize 
+    });
+    
+    const pdfBytes = await pdfDoc.save();
+    const fileName = `VERIFICADO_${placa}_${hash.substring(0,8)}.pdf`;
+    
+    await bot.sendDocument(chatId, Buffer.from(pdfBytes), { 
+        caption: 
+            `✨ *¡DOCUMENTO VERIFICADO EXITOSAMENTE!* ✨\n\n` +
+            `━━━━━━━━━━━━━━━━━━━━\n` +
+            `📂 *Archivo:* \`${placa}\`\n` +
+            `🔐 *Hash de Seguridad:* \n\`${hash.substring(0,32)}\`\n\`${hash.substring(32)}\`\n\n` +
+            `🌐 *Link de Verificación Oficial:*\n${qrUrl}\n` +
+            `━━━━━━━━━━━━━━━━━━━━\n\n` +
+            `📱 _El código QR ha sido insertado en la parte superior del documento para validación inmediata._`, 
+        parse_mode: 'Markdown' 
+    }, { filename: fileName });
+    
+    if (messageId) bot.deleteMessage(chatId, messageId).catch(() => {});
+}
 
 console.log("🤖 Bot TIVE IA Online!");
 
