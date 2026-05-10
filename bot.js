@@ -8,10 +8,16 @@ const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 require('dotenv').config();
 
-// --- CONFIGURACIÓN ---
+// --- CONFIGURACIÓN SEGURA ---
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = process.env.ADMIN_ID;
-const API_KEYS = ["AIzaSyBQMCOse-Af9uQwW6W-kCp_eRzmA9jNgxw", "AIzaSyDOZEej0HnnmZzqnSY0D78wszPGB8Sa5ls"];
+
+// Leemos las llaves desde la variable de entorno GEMINI_KEYS (separadas por coma)
+const API_KEYS = (process.env.GEMINI_KEYS || "").split(",").map(k => k.trim()).filter(k => k);
+
+if (API_KEYS.length === 0) {
+    console.error("❌ ERROR: No se encontraron llaves en GEMINI_KEYS. Configúralas en Easypanel.");
+}
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 const userPdfs = new Map();
@@ -41,6 +47,7 @@ function getTemplatePath(name) {
 }
 
 async function extraerConIA(pdfBuffer) {
+    if (API_KEYS.length === 0) throw new Error("Llaves API no configuradas.");
     let lastError = null;
     for (const key of API_KEYS) {
         try {
@@ -49,7 +56,10 @@ async function extraerConIA(pdfBuffer) {
             const prompt = `Analiza este documento TIVE. Extrae datos y devuelve SOLO JSON con llaves exactas: zona, sede, partida, dua, titulo, fechaTitulo, placa, codVerif, tituloNo, fechaFinal, categoria, marca, modelo, color, añoModelo, version, vin, serie, motor, carroceria, potencia, formRod, combustible, asientos, pasajeros, ruedas, ejes, cilindros, longitud, altura, ancho, cilindrada, pBruto, pNeto, cargaUtil.`;
             const result = await model.generateContent([{ inlineData: { data: pdfBuffer.toString("base64"), mimeType: "application/pdf" } }, { text: prompt }]);
             return JSON.parse(result.response.text().replace(/```json|```/g, "").trim());
-        } catch (e) { lastError = e; }
+        } catch (e) { 
+            console.error(`Error con llave ${key.substring(0,5)}...:`, e.message);
+            lastError = e; 
+        }
     }
     throw lastError;
 }
@@ -59,7 +69,6 @@ async function generarTIVE(chatId, datos, qrCustomLink = null) {
     const gris = rgb(0.6, 0.6, 0.6);
     const negro = rgb(0, 0, 0);
 
-    // ANVERSO
     const pdfAnt = await PDFDocument.load(fs.readFileSync(getTemplatePath('adelantexd.pdf')));
     const pageA = pdfAnt.getPages()[0];
     const { height: hA } = pageA.getSize();
@@ -74,13 +83,10 @@ async function generarTIVE(chatId, datos, qrCustomLink = null) {
     pageA.drawText(safe(datos.tituloNo), { x: 183, y: hA - 149.5, size: 4.5, font: fontB, color: negro });
     pageA.drawText(safe(datos.fechaFinal), { x: 177, y: hA - 158, size: 4.5, font: fontB, color: negro });
     drawRealBarcode(pageA, datos.placa, 10, hA - 168, 80, 15);
-    
-    // QR Lógica: Usar personalizado o oficial
     const finalQR = qrCustomLink || `https://tive.sunarp.gob.pe/ver/${safe(datos.placa)}`;
     const qrImg = await pdfAnt.embedPng(await QRCode.toDataURL(finalQR, { margin: 1 }));
     pageA.drawImage(qrImg, { x: 100, y: hA - 170, width: 52, height: 52 });
 
-    // REVERSO
     const pdfRev = await PDFDocument.load(fs.readFileSync(getTemplatePath('atrasxd.pdf')));
     const pageR = pdfRev.getPages()[0];
     const { height: hR, width: wR } = pageR.getSize();
