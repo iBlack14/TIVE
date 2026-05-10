@@ -6,6 +6,8 @@ const bwipjs = require('bwip-js');
 const { execSync } = require('child_process');
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const pdf2img = require('pdf-img-convert');
+const sharp = require('sharp');
 require('dotenv').config();
 
 // --- CONFIGURACIÓN ---
@@ -103,32 +105,52 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
     const barImg = await pdfRev.embedPng(await bwipjs.toBuffer({ bcid: 'pdf417', text: barText, scale: 2, height: 12 }));
     pageR.drawImage(barImg, { x: (wR / 2) - (246 / 2), y: 5, width: 170, height: 22 });
 
-    // --- RECORTE DE FIRMA CON POPPLER (MUCHO MEJOR) ---
-    const sigPath = `sig_${safe(datos.placa)}.png`;
-    const tmpPdf = `tmp_${safe(datos.placa)}.pdf`;
+    // --- RECORTE DE FIRMA USANDO PDF-IMG-CONVERT Y SHARP (SIN DEPENDENCIAS EXTERNAS) ---
     if (originalBuffer) {
         try {
-            fs.writeFileSync(tmpPdf, originalBuffer);
-            // Recortamos el área de la firma directamente desde el PDF original
-            // Coordenadas calibradas para SUNARP
-            execSync(`pdftocairo -png -singlefile -x 430 -y 760 -W 140 -H 60 -r 300 ${tmpPdf} sig_${safe(datos.placa)}`);
-            const sigImg = await pdfRev.embedPng(fs.readFileSync(sigPath));
-            pageR.drawImage(sigImg, { x: 235, y: 5, width: 55, height: 24 });
-            fs.unlinkSync(sigPath); fs.unlinkSync(tmpPdf);
+            // Convertimos la primera página a imagen (300 DPI)
+            const images = await pdf2img.convert(originalBuffer, { base64: false });
+            if (images && images.length > 0) {
+                // Coordenadas calibradas para SUNARP (ajustadas para Sharp)
+                // pdftocairo: x=430, y=760, W=140, H=60
+                // Sharp usa coordenadas de imagen real. A 300 DPI, 1 pt = 4.166 px
+                const scale = 300 / 72;
+                const sigCrop = await sharp(images[0])
+                    .extract({ 
+                        left: Math.round(430 * scale), 
+                        top: Math.round(760 * scale), 
+                        width: Math.round(140 * scale), 
+                        height: Math.round(60 * scale) 
+                    })
+                    .png()
+                    .toBuffer();
+                
+                const sigImg = await pdfRev.embedPng(sigCrop);
+                pageR.drawImage(sigImg, { x: 235, y: 5, width: 55, height: 24 });
+            }
         } catch (e) { console.error("Error recortando firma:", e.message); }
     }
 
-    const fA_pdf = `anv_${safe(datos.placa)}.pdf`; const fR_pdf = `rev_${safe(datos.placa)}.pdf`;
-    fs.writeFileSync(fA_pdf, await pdfAnt.save()); fs.writeFileSync(fR_pdf, await pdfRev.save());
+    const bufA = await pdfAnt.save();
+    const bufR = await pdfRev.save();
 
     try {
-        execSync(`pdftocairo -png -singlefile -r 300 ${fA_pdf} anv_${safe(datos.placa)}`);
-        execSync(`pdftocairo -png -singlefile -r 300 ${fR_pdf} rev_${safe(datos.placa)}`);
-        await bot.sendPhoto(chatId, `anv_${safe(datos.placa)}.png`, { caption: `✅ Anverso - QR: ${finalQR}` });
-        await bot.sendPhoto(chatId, `rev_${safe(datos.placa)}.png`, { caption: `✅ Reverso` });
-        fs.unlinkSync(fA_pdf); fs.unlinkSync(fR_pdf); fs.unlinkSync(`anv_${safe(datos.placa)}.png`); fs.unlinkSync(`rev_${safe(datos.placa)}.png`);
+        // Convertimos los PDFs resultantes a PNG sin usar pdftocairo
+        const imgA = await pdf2img.convert(bufA, { base64: false });
+        const imgR = await pdf2img.convert(bufR, { base64: false });
+
+        await bot.sendPhoto(chatId, imgA[0], { 
+            caption: `✅ Anverso - QR: ${finalQR}`,
+            contentType: 'image/png'
+        });
+        await bot.sendPhoto(chatId, imgR[0], { 
+            caption: `✅ Reverso`,
+            contentType: 'image/png'
+        });
     } catch (e) {
-        await bot.sendDocument(chatId, fA_pdf); await bot.sendDocument(chatId, fR_pdf);
+        console.error("Error enviando fotos:", e.message);
+        await bot.sendDocument(chatId, Buffer.from(bufA), { filename: `anv_${safe(datos.placa)}.pdf` });
+        await bot.sendDocument(chatId, Buffer.from(bufR), { filename: `rev_${safe(datos.placa)}.pdf` });
     }
 }
 
