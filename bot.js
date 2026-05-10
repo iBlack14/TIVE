@@ -1,3 +1,4 @@
+process.env.NTBA_FIX_350 = 1;
 const TelegramBot = require('node-telegram-bot-api');
 const QRCode = require('qrcode');
 const path = require('path');
@@ -108,19 +109,29 @@ async function generarTIVE(chatId, datos, originalBuffer = null) {
         try {
             const images = await pdf2img.convert(originalBuffer, { width: 2000 });
             if (images && images.length > 0) {
+                const imgBuffer = Buffer.from(images[0]);
+                const metadata = await sharp(imgBuffer).metadata();
                 const scale = 2000 / 612; // Basado en el ancho estándar de SUNARP PDF
-                const sigCrop = await sharp(images[0])
-                    .extract({ 
-                        left: Math.round(430 * scale), 
-                        top: Math.round(760 * scale), 
-                        width: Math.round(140 * scale), 
-                        height: Math.round(60 * scale) 
-                    })
-                    .png()
-                    .toBuffer();
                 
-                const sigImg = await pdfRev.embedPng(sigCrop);
-                pageR.drawImage(sigImg, { x: 235, y: 5, width: 55, height: 24 });
+                let left = Math.round(430 * scale);
+                let top = Math.round(760 * scale);
+                let width = Math.round(140 * scale);
+                let height = Math.round(60 * scale);
+
+                left = Math.max(0, Math.min(left, metadata.width - 1));
+                top = Math.max(0, Math.min(top, metadata.height - 1));
+                width = Math.min(width, metadata.width - left);
+                height = Math.min(height, metadata.height - top);
+
+                if (width > 0 && height > 0) {
+                    const sigCrop = await sharp(imgBuffer)
+                        .extract({ left, top, width, height })
+                        .png()
+                        .toBuffer();
+                    
+                    const sigImg = await pdfRev.embedPng(sigCrop);
+                    pageR.drawImage(sigImg, { x: 235, y: 5, width: 55, height: 24 });
+                }
             }
         } catch (e) { console.error("Error recortando firma:", e.message); }
     }
@@ -133,8 +144,8 @@ async function generarTIVE(chatId, datos, originalBuffer = null) {
         const imgR = await pdf2img.convert(bufR, { width: 1200 });
 
         // Usamos fileOptions para evitar errores de parseo y 414 de Nginx
-        await bot.sendPhoto(chatId, imgA[0], { caption: `✅ Anverso` }, { filename: 'anverso.png', contentType: 'image/png' });
-        await bot.sendPhoto(chatId, imgR[0], { caption: `✅ Reverso` }, { filename: 'reverso.png', contentType: 'image/png' });
+        await bot.sendPhoto(chatId, Buffer.from(imgA[0]), { caption: `✅ Anverso` }, { filename: 'anverso.png', contentType: 'image/png' });
+        await bot.sendPhoto(chatId, Buffer.from(imgR[0]), { caption: `✅ Reverso` }, { filename: 'reverso.png', contentType: 'image/png' });
     } catch (e) {
         console.error("Error enviando fotos:", e.message);
         await bot.sendDocument(chatId, Buffer.from(bufA), { caption: "Anverso (PDF)" }, { filename: `anv_${safe(datos.placa)}.pdf` });
@@ -152,6 +163,7 @@ bot.on('document', async (msg) => {
 });
 
 bot.on('callback_query', async (query) => {
+    bot.answerCallbackQuery(query.id).catch(console.error);
     const chatId = query.message.chat.id;
     const buffer = userPdfs.get(chatId);
     if (!buffer) return bot.sendMessage(chatId, "❌ Reenvía el PDF.");
@@ -163,7 +175,6 @@ bot.on('callback_query', async (query) => {
             await generarTIVE(chatId, datos, buffer); 
         } catch (e) { bot.sendMessage(chatId, "❌ Error: " + e.message); }
     }
-    bot.answerCallbackQuery(query.id);
 });
 
 console.log("🤖 Bot TIVE IA Online!");
