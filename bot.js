@@ -29,6 +29,11 @@ const userState = new Map();
 let DOMAIN = process.env.DOMAIN_URL || 'http://localhost:4000';
 if (DOMAIN.endsWith('/')) DOMAIN = DOMAIN.slice(0, -1);
 
+// Configuración QR en PDF (Cargado desde .env)
+const QR_X = parseFloat(process.env.QR_X) || 12.2;
+const QR_Y = parseFloat(process.env.QR_Y) || 10.2;
+const QR_SIZE = parseFloat(process.env.QR_SIZE) || 72;
+
 const uploadDir = path.join(__dirname, 'servicio', 'verCertificado');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -391,12 +396,12 @@ async function finalizarInsercionQR(chatId, buffer, placa, hash, messageId = nul
         color: { dark: '#000000', light: '#ffffff' }
     }));
     
-    // Posición "Clásica" (Arriba a la izquierda, similar a tus plantillas viejas)
-    const qrSize = 90;
-    const posX = 30; 
-    const posY = height - qrSize - 30; // 30px desde el borde superior
+    // Posición dinámica basada en porcentajes (Original 0bdff6)
+    const qrSize = QR_SIZE;
+    const posX = (QR_X / 100) * width;
+    const posY = height - ((QR_Y / 100) * height) - qrSize;
 
-    console.log(`[BOT] 📍 Pegando QR Clásico en X:${posX}, Y:${posY}`);
+    console.log(`[BOT] 📍 Pegando QR Original en X:${posX.toFixed(2)}, Y:${posY.toFixed(2)} (Size: ${qrSize})`);
     
     page.drawImage(qrImg, { 
         x: posX, 
