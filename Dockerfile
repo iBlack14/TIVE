@@ -28,4 +28,5 @@ COPY . .
 
 RUN mkdir -p servicio/verCertificado
 
-CMD ["node", "bot.js"]
+# Arrancamos tanto el bot como el servidor web (usando el script 'all' de package.json)
+CMD ["npm", "run", "all"]
