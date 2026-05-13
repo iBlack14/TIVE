@@ -235,11 +235,39 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
         const imgA = await pdf2img.convert(bufA, { width: 1200 });
         const imgR = await pdf2img.convert(bufR, { width: 1200 });
 
+        // --- NUEVO: RECORTAR 2CM DE CADA LADO PARA TELEGRAM ---
+        const cropPx = 115; // Estimación de 2cm para un ancho de 1200px
+        
+        const recortarParaTelegram = async (bufferImg) => {
+            const buffer = Buffer.from(bufferImg);
+            const metadata = await sharp(buffer).metadata();
+            
+            // Verificamos que el recorte no exceda las dimensiones
+            const finalW = metadata.width - (cropPx * 2);
+            const finalH = metadata.height - (cropPx * 2);
+            
+            if (finalW > 0 && finalH > 0) {
+                return await sharp(buffer)
+                    .extract({ 
+                        left: cropPx, 
+                        top: cropPx, 
+                        width: finalW, 
+                        height: finalH 
+                    })
+                    .toBuffer();
+            }
+            return buffer; // Si hay error en dimensiones, envía original
+        };
+
+        console.log(`[TIVE] ✂️ Aplicando recorte de 2cm para Telegram...`);
+        const finalImgA = await recortarParaTelegram(imgA[0]);
+        const finalImgR = await recortarParaTelegram(imgR[0]);
+
         console.log(`[TIVE] 📤 Enviando imágenes PNG al chat ${chatId}...`);
         const enlaceWeb = `${DOMAIN_URL}/verCertificado/TIVE-${safe(datos.placa).toUpperCase()}`;
         
-        await bot.sendPhoto(chatId, Buffer.from(imgA[0]), { caption: `✅ Anverso\n🔗 Enlace Web:\n${enlaceWeb}` }, { filename: 'anverso.png', contentType: 'image/png' });
-        await bot.sendPhoto(chatId, Buffer.from(imgR[0]), { caption: `✅ Reverso` }, { filename: 'reverso.png', contentType: 'image/png' });
+        await bot.sendPhoto(chatId, finalImgA, { caption: `✅ Anverso\n🔗 Enlace Web:\n${enlaceWeb}` }, { filename: 'anverso.png', contentType: 'image/png' });
+        await bot.sendPhoto(chatId, finalImgR, { caption: `✅ Reverso` }, { filename: 'reverso.png', contentType: 'image/png' });
         
         console.log(`[TIVE] ✅ Imágenes y mensaje enviados exitosamente.`);
     } catch (e) {
