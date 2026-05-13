@@ -430,7 +430,7 @@ async function finalizarInsercionQR(chatId, buffer, placa, hash, messageId = nul
     fs.writeFileSync(finalPath, Buffer.from(pdfBytes));
     console.log(`[BOT] 📁 PDF EDITADO sobrescrito/guardado en servidor: ${hash}.pdf`);
 
-    const fileName = `Tive-${hash}.pdf`;
+    const fileName = `Tive_${hash.substring(0,8)}.pdf`;
     
     await bot.sendDocument(chatId, Buffer.from(pdfBytes), { 
         caption: 
