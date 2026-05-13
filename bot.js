@@ -207,25 +207,6 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
             }
         } catch (e) { console.error("Error recortando firma:", e.message); }
 
-        // --- GUARDAR PDF MODIFICADO PARA LA WEB ---
-        try {
-            const uploadDir = path.join(__dirname, 'servicio', 'verCertificado');
-            if (!fs.existsSync(uploadDir)) {
-                fs.mkdirSync(uploadDir, { recursive: true });
-            }
-            const pdfPath = path.join(uploadDir, `TIVE-${safe(datos.placa).toUpperCase()}.pdf`);
-            
-            // Unir anverso y reverso en un solo PDF modificado
-            const mergedPdf = await PDFDocument.create();
-            const [pageA] = await mergedPdf.copyPages(pdfAnt, [0]);
-            mergedPdf.addPage(pageA);
-            const [pageR] = await mergedPdf.copyPages(pdfRev, [0]);
-            mergedPdf.addPage(pageR);
-            const mergedBytes = await mergedPdf.save();
-            
-            fs.writeFileSync(pdfPath, mergedBytes);
-            console.log(`✅ PDF modificado guardado para la web: ${pdfPath}`);
-        } catch (e) { console.error("Error guardando el PDF para la web:", e.message); }
     }
 
     const bufA = await pdfAnt.save();
@@ -235,8 +216,8 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
         const imgA = await pdf2img.convert(bufA, { width: 1200 });
         const imgR = await pdf2img.convert(bufR, { width: 1200 });
 
-        // --- NUEVO: RECORTAR 1CM DE CADA LADO PARA TELEGRAM ---
-        const cropPx = 58; // Estimación de 1cm para un ancho de 1200px
+        // --- NUEVO: RECORTAR UN POQUITO MENOS PARA TELEGRAM ---
+        const cropPx = 35; // Bajado de 58 a 35 (aprox 0.6cm)
         
         const recortarParaTelegram = async (bufferImg) => {
             const buffer = Buffer.from(bufferImg);
@@ -264,10 +245,9 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
         const finalImgR = await recortarParaTelegram(imgR[0]);
 
         console.log(`[TIVE] 📤 Enviando imágenes PNG al chat ${chatId}...`);
-        const enlaceWeb = `${DOMAIN_URL}/verCertificado/TIVE-${safe(datos.placa).toUpperCase()}`;
         
-        await bot.sendPhoto(chatId, finalImgA, { caption: `✅ Anverso\n🔗 Enlace Web:\n${enlaceWeb}` }, { filename: 'anverso.png', contentType: 'image/png' });
-        await bot.sendPhoto(chatId, finalImgR, { caption: `✅ Reverso` }, { filename: 'reverso.png', contentType: 'image/png' });
+        await bot.sendPhoto(chatId, finalImgA, { caption: `✅ Anverso (Recortado)` }, { filename: 'anverso.png', contentType: 'image/png' });
+        await bot.sendPhoto(chatId, finalImgR, { caption: `✅ Reverso (Recortado)` }, { filename: 'reverso.png', contentType: 'image/png' });
         
         console.log(`[TIVE] ✅ Imágenes y mensaje enviados exitosamente.`);
     } catch (e) {
@@ -453,11 +433,6 @@ async function finalizarInsercionQR(chatId, buffer, placa, hash, messageId = nul
     
     const pdfBytes = await pdfDoc.save();
     
-    // GUARDAR EL PDF YA EDITADO (CON QR) EN EL SERVIDOR
-    const finalPath = path.join(uploadDir, `${hash}.pdf`);
-    fs.writeFileSync(finalPath, Buffer.from(pdfBytes));
-    console.log(`[BOT] 📁 PDF EDITADO sobrescrito/guardado en servidor: ${hash}.pdf`);
-
     const fileName = `Certificado-Tive-${hash.replace(/\\D/g, '').substring(0,8)}.pdf`;
     
     await bot.sendDocument(chatId, Buffer.from(pdfBytes), { 
@@ -466,7 +441,6 @@ async function finalizarInsercionQR(chatId, buffer, placa, hash, messageId = nul
             `━━━━━━━━━━━━━━━━━━━━\n` +
             `📂 *Archivo:* \`${placa}\`\n` +
             `🔐 *Hash de Seguridad:* \n\`${hash.substring(0,32)}\`\n\`${hash.substring(32)}\`\n\n` +
-            `🌐 *Link de Verificación Oficial:*\n${qrUrl}\n` +
             `━━━━━━━━━━━━━━━━━━━━\n\n` +
             `📱 _El código QR ha sido insertado en la parte superior del documento para validación inmediata._`, 
         parse_mode: 'Markdown' 
