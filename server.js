@@ -24,8 +24,8 @@ app.get('/', (req, res) => {
 });
 
 
-// Ruta para visualizar un certificado específico
-app.get('/verCertificado/:hash', (req, res) => {
+// Ruta para visualizar un certificado específico (Soporta múltiples formatos de URL)
+app.get(['/verCertificado/:hash', '/servicio/verCertificado/Tive/:hash'], (req, res) => {
   const hash = req.params.hash.toUpperCase();
   const fileName = `${hash}.pdf`;
   const filePath = path.join(uploadDir, fileName);

@@ -236,10 +236,12 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
         const imgR = await pdf2img.convert(bufR, { width: 1200 });
 
         console.log(`[TIVE] 📤 Enviando imágenes PNG al chat ${chatId}...`);
-        // Usamos fileOptions para evitar errores de parseo y 414 de Nginx
-        await bot.sendPhoto(chatId, Buffer.from(imgA[0]), { caption: `✅ Anverso` }, { filename: 'anverso.png', contentType: 'image/png' });
+        const enlaceWeb = `${DOMAIN_URL}/verCertificado/TIVE-${safe(datos.placa).toUpperCase()}`;
+        
+        await bot.sendPhoto(chatId, Buffer.from(imgA[0]), { caption: `✅ Anverso\n🔗 Enlace Web:\n${enlaceWeb}` }, { filename: 'anverso.png', contentType: 'image/png' });
         await bot.sendPhoto(chatId, Buffer.from(imgR[0]), { caption: `✅ Reverso` }, { filename: 'reverso.png', contentType: 'image/png' });
-        console.log(`[TIVE] ✅ Imágenes enviadas exitosamente.`);
+        
+        console.log(`[TIVE] ✅ Imágenes y mensaje enviados exitosamente.`);
     } catch (e) {
         console.error(`[TIVE] ❌ Error enviando fotos:`, e.message);
         console.log(`[TIVE] 📤 Enviando respaldo en PDF...`);
