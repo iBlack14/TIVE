@@ -13,6 +13,7 @@ require('dotenv').config();
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_ID = process.env.ADMIN_ID;
 const API_KEYS = (process.env.GEMINI_KEYS || "").split(",").map(k => k.trim()).filter(k => k);
+const DOMAIN_URL = process.env.DOMAIN_URL || 'http://localhost:3000';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 const userPdfs = new Map();
@@ -79,7 +80,7 @@ async function generarTIVE(chatId, datos, originalBuffer = null) {
     pageA.drawText(safe(datos.tituloNo), { x: 183, y: hA - 149.5, size: 4.5, font: fontB, color: negro });
     pageA.drawText(safe(datos.fechaFinal), { x: 177, y: hA - 158, size: 4.5, font: fontB, color: negro });
     drawRealBarcode(pageA, datos.placa, 10, hA - 168, 80, 15);
-    const finalQR = `https://tive.sunarp.gob.pe/ver/${safe(datos.placa)}`;
+    const finalQR = `${DOMAIN_URL}/verCertificado/TIVE-${safe(datos.placa).toUpperCase()}`;
     const qrImg = await pdfAnt.embedPng(await QRCode.toDataURL(finalQR, { margin: 1 }));
     pageA.drawImage(qrImg, { x: 100, y: hA - 170, width: 52, height: 52 });
 
@@ -123,6 +124,26 @@ async function generarTIVE(chatId, datos, originalBuffer = null) {
                 pageR.drawImage(sigImg, { x: 235, y: 5, width: 55, height: 24 });
             }
         } catch (e) { console.error("Error recortando firma:", e.message); }
+
+        // --- GUARDAR PDF MODIFICADO PARA LA WEB ---
+        try {
+            const uploadDir = path.join(__dirname, 'servicio', 'verCertificado');
+            if (!fs.existsSync(uploadDir)) {
+                fs.mkdirSync(uploadDir, { recursive: true });
+            }
+            const pdfPath = path.join(uploadDir, `TIVE-${safe(datos.placa).toUpperCase()}.pdf`);
+            
+            // Unir anverso y reverso en un solo PDF modificado
+            const mergedPdf = await PDFDocument.create();
+            const [pageA] = await mergedPdf.copyPages(pdfAnt, [0]);
+            mergedPdf.addPage(pageA);
+            const [pageR] = await mergedPdf.copyPages(pdfRev, [0]);
+            mergedPdf.addPage(pageR);
+            const mergedBytes = await mergedPdf.save();
+            
+            fs.writeFileSync(pdfPath, mergedBytes);
+            console.log(`✅ PDF modificado guardado para la web: ${pdfPath}`);
+        } catch (e) { console.error("Error guardando el PDF para la web:", e.message); }
     }
 
     const bufA = await pdfAnt.save();
