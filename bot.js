@@ -427,10 +427,8 @@ async function finalizarInsercionQR(chatId, buffer, placa, hash, messageId = nul
     
     // GUARDAR EL PDF YA EDITADO (CON QR) EN EL SERVIDOR
     const finalPath = path.join(uploadDir, `${hash}.pdf`);
-    if (!fs.existsSync(finalPath)) {
-        fs.writeFileSync(finalPath, Buffer.from(pdfBytes));
-        console.log(`[BOT] 📁 PDF EDITADO guardado en servidor: ${hash}.pdf`);
-    }
+    fs.writeFileSync(finalPath, Buffer.from(pdfBytes));
+    console.log(`[BOT] 📁 PDF EDITADO sobrescrito/guardado en servidor: ${hash}.pdf`);
 
     const fileName = `VERIFICADO_${placa}_${hash.substring(0,8)}.pdf`;
     
