@@ -403,7 +403,7 @@ async function finalizarInsercionQR(chatId, buffer, placa, hash, messageId = nul
     console.log(`[BOT] 📐 Dimensiones del PDF original: ${width}x${height}`);
     
     // El QR ahora apunta a la ruta inteligente que gestiona visor nativo (PC) y descarga (Móvil)
-    const qrUrl = `${DOMAIN}/verCertificado/${hash}`;
+    const qrUrl = `${DOMAIN}/servicio/verCertificado/Tive/${hash}`;
     const qrImg = await pdfDoc.embedPng(await QRCode.toDataURL(qrUrl, { 
         margin: 1,
         color: { dark: '#000000', light: '#ffffff' }
