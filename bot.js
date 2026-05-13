@@ -235,8 +235,8 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
         const imgA = await pdf2img.convert(bufA, { width: 1200 });
         const imgR = await pdf2img.convert(bufR, { width: 1200 });
 
-        // --- NUEVO: RECORTAR 2CM DE CADA LADO PARA TELEGRAM ---
-        const cropPx = 115; // Estimación de 2cm para un ancho de 1200px
+        // --- NUEVO: RECORTAR 1CM DE CADA LADO PARA TELEGRAM ---
+        const cropPx = 58; // Estimación de 1cm para un ancho de 1200px
         
         const recortarParaTelegram = async (bufferImg) => {
             const buffer = Buffer.from(bufferImg);
