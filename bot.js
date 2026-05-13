@@ -107,20 +107,6 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
     const fontBAnt = await pdfAnt.embedFont(FONT_BYTES);
     const pageA = pdfAnt.getPages()[0];
     const { height: hA } = pageA.getSize();
-<<<<<<< HEAD
-    pageA.drawText(safe(datos.zona), { x: 60, y: hA - 56, size: 5.5, font: fontB, color: gris });
-    pageA.drawText(safe(datos.sede), { x: 55, y: hA - 63, size: 5.5, font: fontB, color: gris });
-    pageA.drawText(safe(datos.partida), { x: 65, y: hA - 75, size: 6.8, font: fontB, color: negro });
-    pageA.drawText(safe(datos.dua), { x: 50, y: hA - 89, size: 6.8, font: fontB, color: negro });
-    pageA.drawText(safe(datos.titulo), { x: 34.5, y: hA - 104, size: 6.8, font: fontB, color: negro });
-    pageA.drawText(safe(datos.fechaTitulo), { x: 65, y: hA - 117, size: 6.8, font: fontB, color: negro });
-    pageA.drawText(safe(datos.placa), { x: 162, y: hA - 115, size: 17.9, font: fontB, color: negro });
-    pageA.drawText(safe(datos.codVerif), { x: 213, y: hA - 142, size: 4.5, font: fontB, color: negro });
-    pageA.drawText(safe(datos.tituloNo), { x: 183, y: hA - 149.5, size: 4.5, font: fontB, color: negro });
-    pageA.drawText(safe(datos.fechaFinal), { x: 177, y: hA - 158, size: 4.5, font: fontB, color: negro });
-    drawRealBarcode(pageA, datos.placa, 10, hA - 168, 80, 15);
-    const finalQR = `${DOMAIN_URL}/verCertificado/TIVE-${safe(datos.placa).toUpperCase()}`;
-=======
     pageA.drawText(safe(datos.zona), { x: 60, y: hA - 56, size: 5.5, font: fontBAnt, color: gris });
     pageA.drawText(safe(datos.sede), { x: 55, y: hA - 63, size: 5.5, font: fontBAnt, color: gris });
     pageA.drawText(safe(datos.partida), { x: 65, y: hA - 75, size: 6.8, font: fontBAnt, color: negro });
@@ -149,8 +135,7 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
         height: 18 
     });
 
-    const finalQR = qrCustomLink || `https://tive.sunarp.gob.pe/ver/${safe(datos.placa)}`;
->>>>>>> 0c99e698959e1a79d40196e5cb9cb6bfbfea0705
+    const finalQR = qrCustomLink || `${DOMAIN_URL}/verCertificado/TIVE-${safe(datos.placa).toUpperCase()}`;
     const qrImg = await pdfAnt.embedPng(await QRCode.toDataURL(finalQR, { margin: 1 }));
     pageA.drawImage(qrImg, { x: 100, y: hA - 170, width: 52, height: 52 });
 
