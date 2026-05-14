@@ -22,19 +22,57 @@ const ADMIN_IDS = (process.env.ADMIN_ID || "").split(",").map(id => id.trim()).f
 const API_KEYS = (process.env.GEMINI_KEYS || "").split(",").map(k => k.trim()).filter(k => k);
 const DOMAIN_URL = process.env.DOMAIN_URL || 'http://localhost:3000';
 
-const bot = new TelegramBot(BOT_TOKEN, { polling: false });
+const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
-// Limpiar y arrancar con delay de seguridad (7s)
-console.log("🧹 Limpiando conexión con Telegram...");
-bot.deleteWebHook({ drop_pending_updates: true })
-    .then(() => {
-        console.log("✅ Conexión limpia. Esperando 7 segundos para que Easypanel mate instancias viejas...");
-        setTimeout(() => {
-            bot.startPolling();
-            console.log("🚀 Iniciando polling... ¡Bot listo para recibir mensajes y botones!");
-        }, 7000);
-    })
-    .catch(err => console.error("❌ Error en deleteWebHook:", err.message));
+// Limpieza inicial silenciosa
+bot.deleteWebHook({ drop_pending_updates: true }).catch(() => {});
+
+// --- HANDLERS DE EVENTOS (MOVIDOS AL PRINCIPIO) ---
+
+// 1. Comando de prueba
+bot.onText(/\/ping/, (msg) => {
+    bot.sendMessage(msg.chat.id, "🏓 ¡PONG! El bot está vivo y escuchando.");
+});
+
+// 2. Manejo de Botones (Callback Queries)
+bot.on('callback_query', async (query) => {
+    const chatId = query.message.chat.id;
+    const messageId = query.message.message_id;
+    const data = query.data;
+
+    console.log(`[BOT] 🖱️ Botón presionado: ${data} en chat ${chatId}`);
+    
+    // Quitar reloj de carga
+    bot.answerCallbackQuery(query.id).catch(() => {});
+
+    const buffer = userPdfs.get(chatId);
+    if (!buffer) {
+        return bot.sendMessage(chatId, "⚠️ El documento expiró. Por favor, envíalo de nuevo.");
+    }
+
+    if (data === "ask_qr" || data === "qr") {
+        userState.set(chatId, "awaiting_qr");
+        bot.editMessageText(`🔗 *Configuración QR*\nEscribe el link personalizado o elige el oficial:`, {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [[{ text: "🏢 Usar Link Oficial SUNARP", callback_data: "use_official" }]]
+            }
+        });
+    } else if (data === "use_official") {
+        bot.editMessageText(`🧠 *Procesando con IA...*`, { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' });
+        try {
+            const datos = await extraerConIA(buffer);
+            await generarTIVE(chatId, datos, null, buffer);
+        } catch (e) {
+            bot.sendMessage(chatId, `❌ Error: ${e.message}`);
+        }
+    } else if (data === "insert_qr_only") {
+        const hash = crypto.createHash('sha256').update(buffer).digest('hex').toUpperCase();
+        await finalizarInsercionQR(chatId, buffer, "CERTIFICADO", hash, messageId);
+    }
+});
 
 const userPdfs = new Map();
 const userState = new Map();
@@ -347,71 +385,7 @@ bot.on('document', async (msg) => {
     }
 });
 
-bot.on('callback_query', async (query) => {
-    const chatId = query.message.chat.id;
-    const messageId = query.message.message_id;
-    console.log(`[BOT] 🖱️ Botón presionado: ${query.data} desde el chat ${chatId}`);
-    
-    // Responder inmediatamente para quitar el reloj de carga en Telegram
-    bot.answerCallbackQuery(query.id).catch(() => {});
-
-    const buffer = userPdfs.get(chatId);
-
-    if (!buffer) {
-        console.error(`[BOT] ⚠️ Error: No hay buffer para el chatId ${chatId}. Posible reinicio del bot.`);
-        return bot.sendMessage(chatId, "⚠️ *Error:* El documento ya no está en memoria debido a un reinicio del bot. *Por favor, vuelve a enviar el PDF.*", { parse_mode: 'Markdown' });
-    }
-
-    if (query.data === "ask_qr" || query.data === "qr") {
-        userState.set(chatId, "awaiting_qr");
-        bot.editMessageText(
-            `🔗 *Configuración del Código QR*\n` +
-            `━━━━━━━━━━━━━━━━━\n` +
-            `El código QR puede apuntar al link oficial de SUNARP o a un enlace personalizado.\n\n` +
-            `⌨️ *Escribe ahora el link personalizado* o elige la opción oficial debajo:`,
-            {
-                chat_id: chatId,
-                message_id: messageId,
-                parse_mode: 'Markdown',
-                reply_markup: {
-                    inline_keyboard: [[{ text: "🏢 Usar Link Oficial SUNARP", callback_data: "use_official" }]]
-                }
-            }
-        );
-    } else if (query.data === "insert_qr_only") {
-        console.log(`[BOT] 🔐 Iniciando inserción de QR con Hash (Sin IA).`);
-        bot.editMessageText(`🔐 *Generando Certificado por Hash...*`, { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' });
-
-        const hash = crypto.createHash('sha256').update(buffer).digest('hex').toUpperCase();
-        
-        // Llamamos directamente a la inserción usando "CERTIFICADO" como nombre por defecto
-        try {
-            await finalizarInsercionQR(chatId, buffer, "CERTIFICADO", hash, messageId);
-        } catch (e) {
-            console.error(`[BOT] ❌ Error insertando QR:`, e);
-            bot.sendMessage(chatId, `❌ *Error:* ${escapeMarkdown(e.message)}`, { parse_mode: 'Markdown' });
-        }
-    } else if (query.data === "use_official") {
-        console.log(`[BOT] 🏢 Eligió usar link oficial.`);
-        userState.delete(chatId);
-
-        bot.editMessageText(`🧠 *Procesando con Inteligencia Artificial...*\n_Extrayendo datos técnicos y registrales..._`, {
-            chat_id: chatId,
-            message_id: messageId,
-            parse_mode: 'Markdown'
-        });
-
-        try {
-            const datos = await extraerConIA(buffer);
-            if (!datos.placa) bot.sendMessage(chatId, "⚠️ *Aviso:* No se pudo detectar una placa clara.");
-            await generarTIVE(chatId, datos, null, buffer);
-            bot.deleteMessage(chatId, messageId).catch(() => { });
-        } catch (e) {
-            console.error(`[BOT] ❌ Error en flujo principal:`, e);
-            bot.sendMessage(chatId, `❌ *Error en el proceso:* ${escapeMarkdown(e.message)}`, { parse_mode: 'Markdown' });
-        }
-    }
-});
+// Los manejadores de callback_query y document ahora están al principio del archivo.
 
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
