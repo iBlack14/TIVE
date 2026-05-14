@@ -158,7 +158,24 @@ async function extraerConIA(pdfBuffer) {
 }
 
 async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = null) {
-    console.log(`[TIVE] 🎨 Iniciando generación de tarjetas TIVE para la placa: ${datos.placa || 'N/A'}`);
+    const safe = (val) => (val || '').toString().trim();
+
+    // Limpieza de duplicados para Zona y Sede (evita que salga "ZONA REGISTRAL N° ZONA REGISTRAL N° III")
+    let zonaLimpia = safe(datos.zona);
+    let sedeLimpia = safe(datos.sede);
+
+    const labelsToRemove = [
+        "ZONA REGISTRAL N°", "ZONA REGISTRAL Nº", "ZONA REGISTRAL N", "ZONA REGISTRAL",
+        "SEDE REGISTRAL -", "SEDE REGISTRAL-", "SEDE REGISTRAL", "SEDE"
+    ];
+
+    labelsToRemove.forEach(label => {
+        const regex = new RegExp(`^${label}\\s*[:\\-]*\\s*`, 'i');
+        zonaLimpia = zonaLimpia.replace(regex, '');
+        sedeLimpia = sedeLimpia.replace(regex, '');
+    });
+
+    console.log(`[TIVE] 🎨 Generando tarjeta para: ${safe(datos.placa)}`);
     const gris = rgb(0.6, 0.6, 0.6);
     const negro = rgb(0, 0, 0);
 
@@ -168,8 +185,8 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
     const fontBAnt = await pdfAnt.embedFont(FONT_BYTES);
     const pageA = pdfAnt.getPages()[0];
     const { height: hA } = pageA.getSize();
-    pageA.drawText(safe(datos.zona), { x: 60, y: hA - 56, size: 5.5, font: fontBAnt, color: gris });
-    pageA.drawText(safe(datos.sede), { x: 55, y: hA - 63, size: 5.5, font: fontBAnt, color: gris });
+    pageA.drawText(zonaLimpia, { x: 74, y: hA - 56.5, size: 5.2, font: fontBAnt, color: gris });
+    pageA.drawText(sedeLimpia, { x: 72, y: hA - 63.5, size: 5.2, font: fontBAnt, color: gris });
     pageA.drawText(safe(datos.partida), { x: 65, y: hA - 75, size: 6.8, font: fontBAnt, color: negro });
     pageA.drawText(safe(datos.dua), { x: 50, y: hA - 89, size: 6.8, font: fontBAnt, color: negro });
     pageA.drawText(safe(datos.titulo), { x: 34.5, y: hA - 104, size: 6.8, font: fontBAnt, color: negro });
