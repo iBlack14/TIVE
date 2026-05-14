@@ -1,220 +1,62 @@
-# 📄 Servicio de Certificados con Bot de Telegram
+# 📄 Servicio de Certificados TIVE con IA
 
-Sistema completo Node.js para subir certificados PDF, renombrarlos con SHA-256 y generar QR automáticamente mediante Telegram.
+Sistema avanzado para la generación de tarjetas TIVE de SUNARP, procesamiento con Gemini AI e inserción de códigos QR. Optimizado para despliegue en VPS (Docker/Easypanel).
 
-## ¿Cómo funciona?
+## 🚀 Guía de Migración y Persistencia (VPS)
 
-### Flujo:
-1. **Subes PDF a Telegram** → @tive_odiseabot
-2. **Sistema procesa** → Genera hash SHA-256
-3. **Archivo se guarda** → `D6912C854AF13DEAA10A3A6E910B6382.pdf`
-4. **Genera QR** → Link descargable
-5. **Bot devuelve QR** → En Telegram
+Si cambias de servidor o reinstalas el proyecto, sigue estos pasos para no perder tus datos:
 
-### URL Generada:
-```
-https://midominio.com/servicio/verCertificado/D6912C854AF13DEAA10A3A6E910B6382.pdf
+### 1. Preparar el Servidor (SSH)
+Antes de levantar el bot, crea las carpetas de persistencia física en tu VPS:
+```bash
+mkdir -p /root/backups_sunarp/certificados /root/backups_sunarp/logs
 ```
 
-## 📋 Requisitos
+### 2. Configuración de Volúmenes (Docker/Easypanel)
+Para que los archivos no se borren al reiniciar el contenedor, debes mapear los volúmenes como **"Bind Mounts"**:
 
-- Node.js v14+ instalado
-- npm
-- Bot de Telegram (@tive_odiseabot)
-- Token del Bot (ya incluido)
+| Tipo | Ruta en el Servidor (Host) | Ruta en el Bot (Container) |
+| :--- | :--- | :--- |
+| **Bind** | `/root/backups_sunarp/certificados` | `/app/servicio/verCertificado` |
+| **Bind** | `/root/backups_sunarp/logs` | `/app/logs` |
 
-## 🚀 Instalación
-
-### Opción 1: Instalación Local Rápida
-
-```powershell
-cd c:\Users\via\Desktop\web
-npm install
-npm run all
-```
-
-Esto inicia:
-- ✅ Servidor web (puerto 3000)
-- ✅ Bot de Telegram (polling)
-
-### Opción 2: Por Pasos
-
-```powershell
-# 1. Instalar dependencias
-npm install
-
-# 2. Iniciar servidor web
-npm start
-
-# En otra terminal:
-# 3. Iniciar bot de Telegram
-npm run bot
-```
-
-### Opción 3: Doble Clic (Windows)
-Haz doble clic en `instalar-y-iniciar.bat`
-
-## 🌐 Configurar para Coolify
-
-Cuando subas a Coolify, cambia el dominio:
-
-### Opción 1: Archivo .env directo
-Edita `.env` y reemplaza:
-```
-DOMAIN_URL=https://midominio.com
-```
-
-### Opción 2: Script automático
-```powershell
-.\configurar-dominio.ps1
-```
-
-O:
-```cmd
-configurar-dominio.bat
-```
-
-Luego:
-```powershell
-npm run all
-```
-
-## 📱 Usando el Bot de Telegram
-
-### Comandos:
-- `/start` - Mostrar información
-- `/help` - Ayuda completa
-- Envía un PDF - Procesa automáticamente
-
-### Ejemplo:
-1. Abre Telegram
-2. Busca: **@tive_odiseabot**
-3. Envía `/start`
-4. Envía un archivo PDF
-5. ¡Recibirás el QR!
-
-## 📁 Estructura del Proyecto
-
-```
-web/
-├── server.js                (Servidor Express)
-├── bot.js                   (Bot de Telegram)
-├── package.json             (Dependencias)
-├── .env                     (Variables de entorno)
-├── .env.example             (Template)
-├── .gitignore               (Archivos ignorados)
-├── README.md                (Este archivo)
-├── configurar-dominio.ps1   (Script PowerShell)
-├── configurar-dominio.bat   (Script Batch)
-├── instalar-y-iniciar.bat   (Instalador Windows)
-├── public/
-│   └── index.html           (Interfaz web)
-└── servicio/
-    └── verCertificado/      (PDFs guardados)
-```
-
-## 🔒 Características
-
-✅ Renombre automático con SHA-256  
-✅ Generación de QR automática  
-✅ Bot de Telegram integrado  
-✅ Validación de PDFs  
-✅ Interfaz web moderna  
-✅ Drag & drop  
-✅ Variables de entorno  
-✅ Listo para Coolify  
-
-## 🛠️ Variables de Entorno
-
-Edita `.env`:
-
-```env
-# Token del bot (ya configurado)
-TELEGRAM_BOT_TOKEN=8651888269:AAH8Yh8vpvX_NmjHqeVReCjlA-Tq_B1CcNc
-
-# Cambia esto según tu dominio
-DOMAIN_URL=http://localhost:3000
-
-# Puerto
-PORT=3000
-```
-
-## 🚀 Deploy a Coolify
-
-1. Sube el proyecto a GitHub/GitLab
-2. Crea nuevo servicio en Coolify
-3. Selecciona tu repositorio
-4. En variables de entorno, configura:
-   ```
-   TELEGRAM_BOT_TOKEN=8651888269:AAH8Yh8vpvX_NmjHqeVReCjlA-Tq_B1CcNc
-   DOMAIN_URL=https://tu-dominio.com
-   PORT=3000
-   ```
-5. Comando de inicio:
-   ```
-   npm install && npm run all
-   ```
-
-## 🔗 Endpoints
-
-### Web
-- `GET /` - Interfaz de upload
-- `POST /upload` - Subir PDF
-- `GET /archivos` - Listar PDFs
-- `GET /servicio/verCertificado/:filename` - Descargar PDF
-
-### Bot de Telegram
-- `/start` - Iniciar
-- `/help` - Ayuda
-- Enviar documento PDF - Procesar
-
-## 📊 Respuesta del Bot
-
-```
-✅ Certificado procesado
-
-📄 Archivo: D6912C854AF13DEAA10A3A6E910B6382.pdf
-🔗 Link: https://midominio.com/servicio/verCertificado/D6912C854AF13DEAA10A3A6E910B6382.pdf
-🔐 Hash: D6912C854AF13DEAA10A3A6E910B6382
-
-📱 Escanea el QR para descargar
-```
-
-## 🛑 Detener Servicios
-
-Presiona **Ctrl + C** en la terminal
-
-## 📝 Logs
-
-Revisa la consola para ver:
-- Archivos subidos
-- Hashes generados
-- QR creados
-- Errores
-
-## 💡 Tips
-
-- Cada PDF con el MISMO contenido generará el MISMO hash
-- Si necesitas nombres únicos siempre, usa UUID en lugar de SHA-256
-- Los QR apuntan directamente a la URL descargable
-- El bot funciona 24/7 (polling)
-
-## 🆘 Troubleshooting
-
-**Bot no responde:**
-- Verifica que `bot.js` está ejecutándose
-- Revisa que el token es correcto
-
-**Error "DOMAIN_URL no definido":**
-- Revisa que `.env` existe
-- Ejecuta `npm install` nuevamente
-
-**No se generan QR:**
-- Verifica que `qrcode` está instalado
-- Revisa permisos de carpeta
+### 3. Evitar Conflictos (Error 409)
+El bot tiene un **retraso de seguridad de 5-7 segundos** al arrancar. Esto permite que la instancia anterior se apague correctamente antes de que la nueva intente conectarse a Telegram.
 
 ---
 
-**Bot:** @tive_odiseabot  
+## 🛠️ Configuración (.env)
+
+| Variable | Descripción | Ejemplo |
+| :--- | :--- | :--- |
+| `TELEGRAM_BOT_TOKEN` | Token de tu bot de Telegram | `865188...` |
+| `ADMIN_ID` | IDs de administradores autorizados (separados por coma) | `ID1,ID2` |
+| `GEMINI_KEYS` | Llaves de Google AI (separadas por coma) | `KEY1,KEY2` |
+| `DOMAIN_URL` | URL pública para los códigos QR | `https://tu-dominio.com` |
+| `QR_SIZE` | Tamaño del QR en el PDF | `72` |
+
+---
+
+## 📱 Comandos del Bot
+- `/start` - Inicia el bot y muestra capacidades.
+- `/ping` - Prueba de vida (si responde "PONG", todo está OK).
+- **Envío de PDF** - El bot detecta el archivo y ofrece las opciones de IA o Inserción de QR.
+
+## 📁 Estructura Crítica
+- `bot.js`: Lógica del bot y procesamiento de imágenes/PDF.
+- `server.js`: Servidor web para visualizar los certificados.
+- `tarjeta/`: Plantillas base (`adelantexd.pdf`, `atrasxd.pdf`).
+- `servicio/verCertificado/`: Carpeta interna donde se guardan los archivos (mapeada al VPS).
+
+---
+
+## 🆘 Solución de Problemas
+- **Bot no responde a botones**: El documento en memoria expiró por un reinicio. Vuelve a enviar el PDF.
+- **Error 409 Conflict**: Asegúrate de tener solo **1 réplica** en tu panel de control y el **Autoscaling desactivado**.
+- **Files no aparecen en VPS**: Verifica que el "Bind Mount" en Easypanel apunte exactamente a `/app/servicio/verCertificado`.
+
+---
+**Desarrollado para:** TIVE Pro AI
+**Bot:** @tive_odiseabot
 **Soporte:** Contacta a tu desarrollador
 
