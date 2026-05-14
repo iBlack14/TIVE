@@ -226,6 +226,19 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
         const imgA = await pdf2img.convert(bufA, { width: 1200 });
         const imgR = await pdf2img.convert(bufR, { width: 1200 });
 
+        // --- GUARDAR EN DISCO (VPS) ---
+        const finalPdfBuf = await PDFDocument.create();
+        const [page1] = await finalPdfBuf.copyPages(pdfAnt, [0]);
+        const [page2] = await finalPdfBuf.copyPages(pdfRev, [0]);
+        finalPdfBuf.addPage(page1);
+        finalPdfBuf.addPage(page2);
+        const finalBytes = await finalPdfBuf.save();
+        
+        const fileName = `TIVE-${safe(datos.placa).toUpperCase()}.pdf`;
+        const filePath = path.join(uploadDir, fileName);
+        fs.writeFileSync(filePath, Buffer.from(finalBytes));
+        console.log(`[TIVE] ✅ PDF guardado físicamente en: ${filePath}`);
+
         // --- NUEVO: RECORTAR UN POQUITO MENOS PARA TELEGRAM ---
         const cropPx = 35; // Bajado de 58 a 35 (aprox 0.6cm)
         
@@ -333,7 +346,10 @@ bot.on('callback_query', async (query) => {
     const messageId = query.message.message_id;
     const buffer = userPdfs.get(chatId);
 
-    if (!buffer) return bot.sendMessage(chatId, "⚠️ *Error:* El documento ya no está en memoria. Por favor, envíalo de nuevo.");
+    if (!buffer) {
+        console.error(`[BOT] ⚠️ Error: No hay buffer para el chatId ${chatId}. Posible reinicio del bot.`);
+        return bot.sendMessage(chatId, "⚠️ *Error:* El documento ya no está en memoria debido a un reinicio del bot. *Por favor, vuelve a enviar el PDF.*", { parse_mode: 'Markdown' });
+    }
 
     if (query.data === "ask_qr" || query.data === "qr") {
         userState.set(chatId, "awaiting_qr");
