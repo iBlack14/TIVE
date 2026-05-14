@@ -24,14 +24,17 @@ const DOMAIN_URL = process.env.DOMAIN_URL || 'http://localhost:3000';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-// Limpiar cualquier estado previo y ESPERAR a que la instancia vieja se apague (evita Error 409)
-bot.deleteWebHook({ drop_pending_updates: true }).then(() => {
-    console.log("🧹 Estado de Telegram reseteado. Esperando 5 segundos para evitar conflictos...");
-    setTimeout(() => {
-        console.log("🚀 Iniciando polling ahora...");
-        bot.startPolling();
-    }, 5000); // 5 segundos de gracia para el contenedor viejo
-});
+// Limpiar y arrancar con delay de seguridad (7s)
+console.log("🧹 Limpiando conexión con Telegram...");
+bot.deleteWebHook({ drop_pending_updates: true })
+    .then(() => {
+        console.log("✅ Conexión limpia. Esperando 7 segundos para que Easypanel mate instancias viejas...");
+        setTimeout(() => {
+            bot.startPolling();
+            console.log("🚀 Iniciando polling... ¡Bot listo para recibir mensajes y botones!");
+        }, 7000);
+    })
+    .catch(err => console.error("❌ Error en deleteWebHook:", err.message));
 
 const userPdfs = new Map();
 const userState = new Map();
@@ -51,7 +54,10 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 // Sistema de autorización para múltiples IDs
 const isAuthorized = (msg) => {
     if (ADMIN_IDS.length === 0) return true; // Si no hay IDs, acceso libre
-    return ADMIN_IDS.includes(msg.from.id.toString());
+    const userId = (msg.from.id || "").toString();
+    const authorized = ADMIN_IDS.includes(userId);
+    if (!authorized) console.log(`[AUTH] 🚫 Intento de acceso denegado para ID: ${userId}`);
+    return authorized;
 };
 
 const escapeMarkdown = (text) => {
