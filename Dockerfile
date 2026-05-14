@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
     fonts-liberation \
     fontconfig \
     gsfonts \
+    procps \
     && rm -rf /var/lib/apt/lists/* \
     && fc-cache -f -v
 

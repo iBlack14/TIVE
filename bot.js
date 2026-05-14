@@ -25,7 +25,7 @@ const DOMAIN_URL = process.env.DOMAIN_URL || 'http://localhost:3000';
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
 // Limpiar cualquier estado previo de Webhook o Polling en Telegram
-bot.deleteWebhook({ drop_pending_updates: true }).then(() => {
+bot.deleteWebHook({ drop_pending_updates: true }).then(() => {
     console.log("🧹 Estado de Telegram reseteado. Iniciando polling...");
     bot.startPolling();
 });
