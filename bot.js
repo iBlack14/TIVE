@@ -24,10 +24,13 @@ const DOMAIN_URL = process.env.DOMAIN_URL || 'http://localhost:3000';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-// Limpiar cualquier estado previo de Webhook o Polling en Telegram
+// Limpiar cualquier estado previo y ESPERAR a que la instancia vieja se apague (evita Error 409)
 bot.deleteWebHook({ drop_pending_updates: true }).then(() => {
-    console.log("🧹 Estado de Telegram reseteado. Iniciando polling...");
-    bot.startPolling();
+    console.log("🧹 Estado de Telegram reseteado. Esperando 5 segundos para evitar conflictos...");
+    setTimeout(() => {
+        console.log("🚀 Iniciando polling ahora...");
+        bot.startPolling();
+    }, 5000); // 5 segundos de gracia para el contenedor viejo
 });
 
 const userPdfs = new Map();
