@@ -6,8 +6,8 @@ services:
     env_file:
       - .env
     volumes:
-      # SOLO PERSISTENCIA para lo que subes
-      - ./servicio/verCertificado:/app/servicio/verCertificado
-      - ./logs:/app/logs
+      # PERSISTENCIA REAL: Los datos viven en el disco duro del servidor, fuera de Easypanel
+      - /root/backups_sunarp/certificados:/app/servicio/verCertificado
+      - /root/backups_sunarp/logs:/app/logs
     environment:
       - NODE_ENV=production
