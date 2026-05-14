@@ -27,7 +27,8 @@ const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 // Limpieza inicial silenciosa
 bot.deleteWebHook({ drop_pending_updates: true }).catch(() => {});
 
-// --- HANDLERS DE EVENTOS (MOVIDOS AL PRINCIPIO) ---
+// Limpieza inicial silenciosa
+bot.deleteWebHook({ drop_pending_updates: true }).catch(() => {});
 
 // 1. Comando de prueba
 bot.onText(/\/ping/, (msg) => {
@@ -74,8 +75,11 @@ bot.on('callback_query', async (query) => {
     }
 });
 
+// --- PERSISTENCIA EN MEMORIA ---
 const userPdfs = new Map();
 const userState = new Map();
+
+// --- HANDLERS DE EVENTOS ---
 
 // Configuración de persistencia para certificados por HASH
 let DOMAIN = process.env.DOMAIN_URL || 'http://localhost:4000';
