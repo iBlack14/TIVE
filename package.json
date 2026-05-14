@@ -7,7 +7,7 @@
     "start": "node server.js",
     "bot": "node bot.js",
     "dev": "node server.js",
-    "all": "concurrently \"node server.js\" \"node bot.js\""
+    "all": "concurrently --kill-others \"node server.js\" \"node bot.js\""
   },
   "keywords": [
     "pdf",

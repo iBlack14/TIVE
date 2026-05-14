@@ -22,7 +22,14 @@ const ADMIN_ID = process.env.ADMIN_ID;
 const API_KEYS = (process.env.GEMINI_KEYS || "").split(",").map(k => k.trim()).filter(k => k);
 const DOMAIN_URL = process.env.DOMAIN_URL || 'http://localhost:3000';
 
-const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+const bot = new TelegramBot(BOT_TOKEN, { polling: false });
+
+// Limpiar cualquier estado previo de Webhook o Polling en Telegram
+bot.deleteWebhook({ drop_pending_updates: true }).then(() => {
+    console.log("🧹 Estado de Telegram reseteado. Iniciando polling...");
+    bot.startPolling();
+});
+
 const userPdfs = new Map();
 const userState = new Map();
 
@@ -473,4 +480,12 @@ const gracefulShutdown = () => {
 process.on('SIGINT', gracefulShutdown);
 process.on('SIGTERM', gracefulShutdown);
 
-bot.on('polling_error', (err) => console.error("❌ Error de polling:", err.message));
+bot.on('polling_error', (err) => {
+    if (err.message.includes("409 Conflict")) {
+        console.error("⚠️ Conflicto detectado (409): Otra instancia del bot está corriendo.");
+        console.error("💡 Si estás en Railway/Docker, asegúrate de tener 'Replicas = 1' y desactivar el 'Autoscaling'.");
+    } else {
+        console.error("❌ Error de polling:", err.message);
+    }
+});
+
