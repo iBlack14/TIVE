@@ -18,7 +18,7 @@ const FONT_BYTES = fs.readFileSync(FONT_PATH);
 
 // --- CONFIGURACIÓN ---
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const ADMIN_ID = process.env.ADMIN_ID;
+const ADMIN_IDS = (process.env.ADMIN_ID || "").split(",").map(id => id.trim()).filter(id => id);
 const API_KEYS = (process.env.GEMINI_KEYS || "").split(",").map(k => k.trim()).filter(k => k);
 const DOMAIN_URL = process.env.DOMAIN_URL || 'http://localhost:3000';
 
@@ -48,8 +48,11 @@ const QR_SIZE = parseFloat(process.env.QR_SIZE) || 72;
 const uploadDir = path.join(__dirname, 'servicio', 'verCertificado');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-// Desactivado temporalmente para permitir trabajar en local sin restricciones de ID
-const isAuthorized = (msg) => true; // !ADMIN_ID || msg.from.id.toString() === ADMIN_ID.toString();
+// Sistema de autorización para múltiples IDs
+const isAuthorized = (msg) => {
+    if (ADMIN_IDS.length === 0) return true; // Si no hay IDs, acceso libre
+    return ADMIN_IDS.includes(msg.from.id.toString());
+};
 
 const escapeMarkdown = (text) => {
     return text.replace(/[_*`\[]/g, '\\$&');
