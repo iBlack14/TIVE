@@ -105,8 +105,8 @@ async function extraerConIA(pdfBuffer) {
             lastError = e;
         }
     }
-    console.error(`[IA] ❌ Todas las API keys fallaron.`);
-    throw lastError;
+    console.error(`[IA] ❌ Todas las API keys fallaron o el documento no es válido.`);
+    throw new Error("No se pudo extraer información. Asegúrate de que el PDF sea un documento TIVE original de SUNARP.");
 }
 
 async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = null) {
@@ -342,11 +342,13 @@ bot.on('document', async (msg) => {
 });
 
 bot.on('callback_query', async (query) => {
-    console.log(`[BOT] 🖱️ Botón presionado: ${query.data}`);
-    bot.answerCallbackQuery(query.id).catch(err => console.error("[BOT] ❌ Error en answerCallbackQuery:", err.message));
-
     const chatId = query.message.chat.id;
     const messageId = query.message.message_id;
+    console.log(`[BOT] 🖱️ Botón presionado: ${query.data} desde el chat ${chatId}`);
+    
+    // Responder inmediatamente para quitar el reloj de carga en Telegram
+    bot.answerCallbackQuery(query.id).catch(() => {});
+
     const buffer = userPdfs.get(chatId);
 
     if (!buffer) {
