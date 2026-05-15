@@ -253,6 +253,7 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     
     const fontB = await pdfDoc.embedFont(FONT_BYTES);
     const fontSerif = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+    const fontSerifNorm = await pdfDoc.embedFont(StandardFonts.TimesRoman);
     const fontFina = await pdfDoc.embedFont(StandardFonts.Helvetica);
     
     const page = pdfDoc.getPages()[0];
@@ -295,7 +296,7 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     draw(datos.reparticion, 169, 164, 7);
     draw(fmtPlaca(datos.placa), 80, 195, 18);
     draw(datos.titulo, 202, 178, 9);
-    draw(fmtIns(datos.partida), 233, 195, 8);
+    draw(fmtIns(datos.partida), 233, 195, 8, gris, fontSerifNorm);
     draw(datos.apPaterno, 105, 235, 7);
     draw(datos.apPaterno2, 189, 235, 7);
     draw(datos.apMaterno, 105, 245, 7);
@@ -303,8 +304,8 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     draw(datos.nombres, 105, 257, 7);
     draw(datos.nombres2, 185, 258, 7);
     draw(datos.domicilio, 68, 283, 6);
-    draw(fmtProp(datos.fechaPropiedad), 121, 296, 7);
-    draw(fmtInf(datos.fechaInferior), 218, 364, 9, gris, fontFina);
+    draw(fmtProp(datos.fechaPropiedad), 121, 296, 7, gris, fontSerifNorm);
+    draw(fmtInf(datos.fechaInferior), 218, 364, 9, gris, fontSerifNorm);
 
     // --- REVERSO ---
     const drawTec = (text, x, y, size = 11) => {
