@@ -172,7 +172,7 @@ async function extraerConIA_Antigua(pdfBuffer) {
     for (const key of API_KEYS) {
         try {
             const genAI = new GoogleGenerativeAI(key);
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
             const prompt = `Analiza este documento vehicular antiguo y extrae TODOS los datos.
             Devuelve estrictamente un objeto JSON con estos campos:
             {
