@@ -274,6 +274,16 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     draw(fmtEspacios(datos.fechaInferior), 218, 364, 9, gris, fontSerif);
 
     // --- REVERSO ---
+    const drawTec = (text, x, y, size = 11) => {
+        if (!text) return;
+        let finalX = x;
+        // Si contiene MT o TN, movemos 7 unidades a la izquierda
+        if (String(text).toUpperCase().includes("MT") || String(text).toUpperCase().includes("TN")) {
+            finalX -= 7;
+        }
+        draw(text, finalX, y, size);
+    };
+
     draw(datos.controlReverso, 480, 118, 19, rgb(0.8, 0.1, 0.1), fontFina);
     draw(datos.clase, 325, 149, 10);
     draw(datos.marca, 435, 149, 11);
@@ -289,12 +299,12 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     draw(datos.serie, 335, 267, 11);
     draw(datos.pasajeros, 345, 292, 11);
     draw(datos.asientos, 395, 292, 11);
-    draw(datos.pesoSeco, 447, 292, 11);
-    draw(datos.pesoBruto, 500, 292, 11);
-    draw(datos.longitud, 335, 319, 11);
-    draw(datos.altura, 385, 319, 11);
-    draw(datos.ancho, 447, 319, 11);
-    draw(datos.cargaUtil, 500, 319, 11);
+    drawTec(datos.pesoSeco, 447, 292, 11);
+    drawTec(datos.pesoBruto, 500, 292, 11);
+    drawTec(datos.longitud, 335, 319, 11);
+    drawTec(datos.altura, 385, 319, 11);
+    drawTec(datos.ancho, 447, 319, 11);
+    drawTec(datos.cargaUtil, 500, 319, 11);
 
     const pdfBytes = await pdfDoc.save();
     const fileName = `CERTIFICADO_TIV_${(datos.placa || 'DOC').toUpperCase()}.pdf`;
