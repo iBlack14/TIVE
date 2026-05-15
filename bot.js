@@ -72,6 +72,14 @@ bot.on('callback_query', async (query) => {
     } else if (data === "insert_qr_only") {
         const hash = crypto.createHash('sha256').update(buffer).digest('hex').toUpperCase();
         await finalizarInsercionQR(chatId, buffer, "CERTIFICADO", hash, messageId);
+    } else if (data === "gen_antigua") {
+        bot.editMessageText(`🧠 *Analizando documento antiguo con IA...*`, { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' });
+        try {
+            const datos = await extraerConIA_Antigua(buffer);
+            await generarTarjetaAntigua(chatId, datos, buffer);
+        } catch (e) {
+            bot.sendMessage(chatId, `❌ Error: ${e.message}`);
+        }
     }
 });
 
@@ -155,6 +163,104 @@ async function extraerConIA(pdfBuffer) {
     }
     console.error(`[IA] ❌ Todas las API keys fallaron o el documento no es válido.`);
     throw new Error("No se pudo extraer información. Asegúrate de que el PDF sea un documento TIVE original de SUNARP.");
+}
+
+async function extraerConIA_Antigua(pdfBuffer) {
+    console.log(`[IA-ANTIGUA] 🧠 Iniciando extracción de documento antiguo...`);
+    if (API_KEYS.length === 0) throw new Error("Llaves API no configuradas.");
+    
+    for (const key of API_KEYS) {
+        try {
+            const genAI = new GoogleGenerativeAI(key);
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" }, { apiVersion: "v1" });
+            const prompt = `Analiza este documento vehicular antiguo y extrae TODOS los datos.
+            Devuelve estrictamente un objeto JSON con estos campos:
+            {
+              "controlAnverso": "...", "zona": "...", "sede": "...", "reparticion": "...", "placa": "...", "exp": "...", "ins": "...",
+              "apPaterno": "...", "apPaterno2": "...", "apMaterno": "...", "apMaterno2": "...", "nombres": "...", "nombres2": "...",
+              "domicilio": "...", "fechaPropiedad": "...", "fechaInferior": "...",
+              "controlReverso": "...", "clase": "...", "marca": "...", "añoFab": "...", "modelo": "...", "combustible": "...",
+              "carroceria": "...", "ejes": "...", "color": "...", "cilindros": "...", "motor": "...", "ruedas": "...", "serie": "...",
+              "pasajeros": "...", "asientos": "...", "pesoSeco": "...", "pesoBruto": "...", "longitud": "...", "altura": "...", "ancho": "...", "cargaUtil": "..."
+            }
+            IMPORTANTE: Si hay dos propietarios, sepáralos en apPaterno/apPaterno2, etc. Si no, deja el 2 vacío.`;
+
+            const result = await model.generateContent([{ inlineData: { data: pdfBuffer.toString("base64"), mimeType: "application/pdf" } }, { text: prompt }]);
+            return JSON.parse(result.response.text().replace(/```json|```/g, "").trim());
+        } catch (e) { console.error(`[IA-ANTIGUA] ⚠️ Error:`, e.message); }
+    }
+    throw new Error("No se pudo extraer información del documento antiguo.");
+}
+
+async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
+    console.log(`[ANTIGUA] 🎨 Generando tarjeta para: ${datos.placa}`);
+    const templatePath = getTemplatePath('placaplantilla.pdf');
+    const pdfDoc = await PDFDocument.load(fs.readFileSync(templatePath));
+    pdfDoc.registerFontkit(fontkit);
+    
+    const fontB = await pdfDoc.embedFont(FONT_BYTES);
+    const fontSerif = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+    const fontFina = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    
+    const page = pdfDoc.getPages()[0];
+    const { height } = page.getSize();
+    const gris = rgb(0.2, 0.2, 0.2);
+
+    const draw = (text, x, y, size = 7, color = gris, customFont = fontSerif) => {
+        if (!text) return;
+        page.drawText(String(text).toUpperCase(), { x, y: height - y, size, font: customFont, color });
+    };
+
+    // Función para forzar espacios anchos en fechas (ej: 12/01/2007 -> 12   01   2007)
+    const fmtEspacios = (txt) => {
+        if (!txt) return "";
+        return txt.replace(/[\/\-]/g, " ").replace(/\s+/g, "   ").trim();
+    };
+
+    // --- POSICIONAMIENTO AJUSTADO EN EL TEST ---
+    draw(datos.controlAnverso, 220, 120, 19, rgb(0.8, 0.1, 0.1), fontFina);
+    draw(datos.zona, 269, 139, 8);
+    draw(datos.sede, 225, 147.6, 7);
+    draw(datos.reparticion, 169, 164, 7);
+    draw(datos.placa, 80, 195, 18);
+    draw(datos.exp, 215, 175, 7);
+    draw(fmtEspacios(datos.ins), 233, 195, 8);
+    draw(datos.apPaterno, 105, 235, 7);
+    draw(datos.apPaterno2, 189, 235, 7);
+    draw(datos.apMaterno, 105, 245, 7);
+    draw(datos.apMaterno2, 189, 245, 7);
+    draw(datos.nombres, 105, 257, 7);
+    draw(datos.nombres2, 185, 258, 7);
+    draw(datos.domicilio, 68, 283, 6);
+    draw(fmtEspacios(datos.fechaPropiedad), 121, 296, 7);
+    draw(fmtEspacios(datos.fechaInferior), 218, 364, 9, gris, fontSerif);
+
+    // --- REVERSO ---
+    draw(datos.controlReverso, 480, 118, 19, rgb(0.8, 0.1, 0.1), fontFina);
+    draw(datos.clase, 325, 149, 10);
+    draw(datos.marca, 435, 149, 11);
+    draw(datos.añoFab, 510, 145, 11);
+    draw(datos.modelo, 337, 173, 11);
+    draw(datos.combustible, 485, 176, 11);
+    draw(datos.carroceria, 337, 198, 11);
+    draw(datos.ejes, 535, 198, 11);
+    draw(datos.color, 337, 220, 11);
+    draw(datos.cilindros, 533, 245, 11);
+    draw(datos.motor, 335, 243, 11);
+    draw(datos.ruedas, 531, 268, 11);
+    draw(datos.serie, 335, 267, 11);
+    draw(datos.pasajeros, 345, 292, 11);
+    draw(datos.asientos, 395, 292, 11);
+    draw(datos.pesoSeco, 447, 292, 11);
+    draw(datos.pesoBruto, 500, 292, 11);
+    draw(datos.longitud, 335, 319, 11);
+    draw(datos.altura, 385, 319, 11);
+    draw(datos.ancho, 447, 319, 11);
+    draw(datos.cargaUtil, 500, 319, 11);
+
+    const pdfBytes = await pdfDoc.save();
+    const fileName = `ANTIGUA-${(datos.placa || 'DOC').toUpperCase()}.pdf`;
+    await bot.sendDocument(chatId, Buffer.from(pdfBytes), { caption: "✅ Tarjeta Antigua Generada" }, { filename: fileName });
 }
 
 async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = null) {
@@ -387,7 +493,8 @@ bot.on('document', async (msg) => {
             parse_mode: 'Markdown',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: "🚀 Generar Tarjetas TIVE (IA)", callback_data: "ask_qr" }],
+                    [{ text: "🚀 Generar Tarjeta TIVE (IA)", callback_data: "ask_qr" }],
+                    [{ text: "📜 Generar Tarjeta Antigua (IA)", callback_data: "gen_antigua" }],
                     [{ text: "🔐 Insertar QR en PDF Original", callback_data: "insert_qr_only" }]
                 ]
             }
