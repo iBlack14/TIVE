@@ -271,22 +271,14 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
         return txt.replace(/[\/\-]/g, " ").replace(/\s+/g, "   ").trim();
     };
 
-    // Funciones de formato específicas para cada fecha según los cuadros de la plantilla
-    const fmtIns = (txt) => {
-        if (!txt) return "";
-        const p = txt.split(/[\/\-]/);
-        // Usamos un solo espacio para mover el mes a la izquierda
-        return p.length === 3 ? `${p[0]} ${p[1]} ${p[2]}` : txt;
-    };
-    const fmtProp = (txt) => {
-        if (!txt) return "";
-        const p = txt.split(/[\/\-]/);
-        return p.length === 3 ? `${p[0]}  ${p[1]}  ${p[2]}` : txt;
-    };
-    const fmtInf = (txt) => {
-        if (!txt) return "";
-        const p = txt.split(/[\/\-]/);
-        return p.length === 3 ? `${p[0]}   ${p[1]}  ${p[2]}` : txt;
+    // Función para dibujo segmentado de fechas para control total
+    const drawSeg = (txt, x, y, s1 = 12, s2 = 12, size = 7, color = gris, font = fontSerifNorm) => {
+        if (!txt) return;
+        const p = String(txt).split(/[\/\-]/);
+        if (p.length !== 3) return draw(txt, x, y, size, color, font);
+        draw(p[0], x, y, size, color, font);
+        draw(p[1], x + s1, y, size, color, font);
+        draw(p[2], x + s1 + s2, y, size, color, font);
     };
 
     // --- POSICIONAMIENTO AJUSTADO EN EL TEST ---
@@ -296,7 +288,10 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     draw(datos.reparticion, 169, 164, 7);
     draw(fmtPlaca(datos.placa), 80, 195, 18);
     draw(datos.titulo, 202, 178, 9);
-    draw(fmtIns(datos.partida), 233, 195, 8, gris, fontSerifNorm);
+    
+    // 1. INS: Espaciado 11px y 10px (ajustado: mes un poquito más a la izquierda)
+    drawSeg(datos.partida, 233, 195, 11, 10, 8); 
+    
     draw(datos.apPaterno, 105, 235, 7);
     draw(datos.apPaterno2, 189, 235, 7);
     draw(datos.apMaterno, 105, 245, 7);
@@ -304,8 +299,12 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     draw(datos.nombres, 105, 257, 7);
     draw(datos.nombres2, 185, 258, 7);
     draw(datos.domicilio, 68, 283, 6);
-    draw(fmtProp(datos.fechaPropiedad), 121, 296, 7, gris, fontSerifNorm);
-    draw(fmtInf(datos.fechaInferior), 218, 364, 9, gris, fontSerifNorm);
+    
+    // 2. PROPIEDAD: Espaciado 10px y 11px (ajustado: año más a la izquierda)
+    drawSeg(datos.fechaPropiedad, 121, 296, 10, 11, 7);
+    
+    // 3. INFERIOR: Espaciado 15px y 14px (ajustado: año un poquito a la izquierda)
+    drawSeg(datos.fechaInferior, 218, 364, 15, 14, 9, gris, fontSerifNorm);
 
     // --- REVERSO ---
     const drawTec = (text, x, y, size = 11) => {

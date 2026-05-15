@@ -2,110 +2,127 @@ const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const fontkit = require('@pdf-lib/fontkit');
 const fs = require('fs');
 const path = require('path');
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 require('dotenv').config();
-
-// Usar la primera llave disponible en tu .env
-const GEMINI_KEY = (process.env.GEMINI_KEYS || "").split(",")[0].trim();
-const genAI = new GoogleGenerativeAI(GEMINI_KEY);
 
 async function procesarPlaca() {
     console.log("📂 Cargando archivos...");
-    const pdfDatosBuffer = fs.readFileSync(path.join(__dirname, 'placacondatos.pdf'));
-    const plantillaBuffer = fs.readFileSync(path.join(__dirname, 'placaplantilla.pdf'));
+    const plantillaBuffer = fs.readFileSync(path.join(__dirname, 'tarjeta', 'placaplantilla.pdf'));
     const FONT_PATH = path.join(__dirname, 'tarjeta', 'font_bold.ttf');
-
-    if (!fs.existsSync(FONT_PATH)) {
-        throw new Error("No se encontró la fuente en tarjeta/font_bold.ttf");
-    }
     const fontBytes = fs.readFileSync(FONT_PATH);
 
-    // 1. DATOS DE PRUEBA (Completos según Imagen 1)
-    console.log("🧪 Cargando datos de prueba completos...");
+    // 1. DATOS DE PRUEBA
     const datos = {
-        // Tarjeta Izquierda (Anverso)
         "controlAnverso": "030184",
         "zona": "III",
         "sede": "TARAPOTO",
         "reparticion": "TARAPOTO",
-        "placa": "MX-62817",
+        "placa": "5053QS", // Se formateará a 5053-QS
         "exp": "30184",
-        "ins": "15 11 2006",
-        "apPaterno": "LEON ",
-        "apPaterno2": "PARADES",
-        "apMaterno": "CABANILLAS",
-        "apMaterno2": "DE LEON",
-        "nombres": "PABLO GODOFREDO",
-        "nombres2": "ELDA",
-        "domicilio": "ASOC. SANTA MARIA MZ. C LT.14 LIMA",
-        "fechaPropiedad": "12  01 2007",
-        "fechaInferior": "12   01  2007",
-
-        // Tarjeta Derecha (Reverso)
+        "ins": "15/11/2006",
+        "apPaterno": "REATEGUI",
+        "apPaterno2": "",
+        "apMaterno": "REATEGUI",
+        "apMaterno2": "",
+        "nombres": "LUIS ENRIQUE",
+        "nombres2": "",
+        "domicilio": "YURIMAGUAS",
+        "fechaPropiedad": "12/04/2024",
+        "fechaInferior": "09/05/2024",
         "controlReverso": "071542",
-        "clase": "L5-VEH.AUT.MEN",
-        "marca": "RONCO",
-        "añoFab": "2006",
-        "modelo": "CK150ZK-I",
+        "clase": "MOTOCICLETA",
+        "marca": "ZONGSHEN",
+        "añoFab": "2024",
+        "modelo": "SPEX150",
         "combustible": "GASOLINA",
-        "carroceria": "SEDAN",
+        "carroceria": "MOTOCICLETA",
         "ejes": "2",
-        "color": "ROJO",
+        "color": "NEGRO",
         "cilindros": "1",
         "motor": "ZS162MJ386400288",
-        "ruedas": "3",
+        "ruedas": "2",
         "serie": "LKXKDKZ0160T00056",
-        "pasajeros": "2",
-        "asientos": "3",
-        "pesoSeco": "0.360",
-        "pesoBruto": "0.710",
-        "longitud": "2.60",
-        "altura": "1.72",
-        "ancho": "1.25",
-        "cargaUtil": "0.350"
+        "pasajeros": "1",
+        "asientos": "2",
+        "pesoSeco": "0.129 TN",
+        "pesoBruto": "0.279 TN",
+        "longitud": "2.16 MT",
+        "altura": "1.22 MT",
+        "ancho": "0.82 MT",
+        "cargaUtil": "0.150 TN"
     };
 
-    // 2. RELLENAR PLANTILLA
-    console.log("✍️ Escribiendo datos...");
+    // 2. CONFIGURAR PDF
     const pdfDoc = await PDFDocument.load(plantillaBuffer);
     pdfDoc.registerFontkit(fontkit);
-    const font = await pdfDoc.embedFont(fontBytes);
+    const fontB = await pdfDoc.embedFont(fontBytes);
     const fontSerif = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+    const fontSerifNorm = await pdfDoc.embedFont(StandardFonts.TimesRoman);
     const fontFina = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const page = pdfDoc.getPages()[0];
     const { height } = page.getSize();
+    const gris = rgb(0.2, 0.2, 0.2);
 
-    const draw = (text, x, y, size = 7, color = rgb(0.2, 0.2, 0.2), customFont = fontSerif) => {
+    // Helpers de Dibujo
+    const draw = (text, x, y, size = 7, color = gris, customFont = fontSerif) => {
         if (!text) return;
         page.drawText(String(text).toUpperCase(), { x, y: height - y, size, font: customFont, color });
     };
 
-    // =========================================================
-    // POSICIONAMIENTO - MODIFICA LOS NÚMEROS AQUÍ ABAJO
-    // =========================================================
+    const fmtPlaca = (p) => {
+        if (!p) return "";
+        let clean = p.replace(/[^A-Z0-9]/gi, "").toUpperCase();
+        if (clean.length === 6) {
+            if (/^\d{4}/.test(clean)) return `${clean.substring(0, 4)}-${clean.substring(4)}`;
+            return `${clean.substring(0, 3)}-${clean.substring(3)}`;
+        }
+        return clean;
+    };
 
-    // --- TARJETA IZQUIERDA ---
-    draw(datos.controlAnverso, 220, 120, 19, rgb(0.8, 0.1, 0.1), fontFina); // Número Rojo con letra fina
+    const drawTec = (text, x, y, size = 11) => {
+        if (!text) return;
+        let finalX = x;
+        if (String(text).toUpperCase().includes("MT") || String(text).toUpperCase().includes("TN")) {
+            finalX -= 7;
+        }
+        draw(text, finalX, y, size);
+    };
+
+    const drawSeg = (txt, x, y, s1 = 12, s2 = 12, size = 7, color = gris, font = fontSerifNorm) => {
+        if (!txt) return;
+        const p = String(txt).split(/[\/\-]/);
+        if (p.length !== 3) return draw(txt, x, y, size, color, font);
+        draw(p[0], x, y, size, color, font);
+        draw(p[1], x + s1, y, size, color, font);
+        draw(p[2], x + s1 + s2, y, size, color, font);
+    };
+
+    // --- RENDERIZADO ANVERSO ---
+    draw(datos.controlAnverso, 220, 120, 19, rgb(0.8, 0.1, 0.1), fontFina);
     draw(datos.zona, 269, 139, 8);
     draw(datos.sede, 225, 147.6, 7);
     draw(datos.reparticion, 169, 164, 7);
-    draw(datos.placa, 80, 195, 18);
-    draw(datos.exp, 215, 175, 7);
-    draw(datos.ins, 233, 195, 8);
+    draw(fmtPlaca(datos.placa), 80, 195, 18);
+    draw(datos.exp, 202, 178, 9);
+    
+    // Ajuste de espacios para INS (11px y 10px)
+    drawSeg(datos.ins, 233, 195, 11, 10, 8); 
+
     draw(datos.apPaterno, 105, 235, 7);
-    draw(datos.apPaterno2, 189, 235, 7); // Segundo titular a la derecha
-
+    draw(datos.apPaterno2, 189, 235, 7);
     draw(datos.apMaterno, 105, 245, 7);
-    draw(datos.apMaterno2, 189, 245, 7); // Segundo titular a la derecha
-
+    draw(datos.apMaterno2, 189, 245, 7);
     draw(datos.nombres, 105, 257, 7);
-    draw(datos.nombres2, 185, 258, 7);   // Segundo titular a la derecha
+    draw(datos.nombres2, 185, 258, 7);
     draw(datos.domicilio, 68, 283, 6);
-    draw(datos.fechaPropiedad, 121, 296, 7);
-    draw(datos.fechaInferior, 218, 364, 9, rgb(0.2, 0.2, 0.2), fontSerif);
+    
+    // Ajuste de espacios para Propiedad (10px y 11px)
+    drawSeg(datos.fechaPropiedad, 121, 296, 10, 11, 7);
+    
+    // Ajuste de espacios para Emisión (15px y 14px)
+    drawSeg(datos.fechaInferior, 218, 364, 15, 14, 9, gris, fontSerifNorm);
 
-    // --- TARJETA DERECHA ---
-    draw(datos.controlReverso, 480, 118, 19, rgb(0.8, 0.1, 0.1), fontFina); // Número Rojo con letra fina
+    // --- RENDERIZADO REVERSO ---
+    draw(datos.controlReverso, 480, 118, 19, rgb(0.8, 0.1, 0.1), fontFina);
     draw(datos.clase, 325, 149, 10);
     draw(datos.marca, 435, 149, 11);
     draw(datos.añoFab, 510, 145, 11);
@@ -120,19 +137,17 @@ async function procesarPlaca() {
     draw(datos.serie, 335, 267, 11);
     draw(datos.pasajeros, 345, 292, 11);
     draw(datos.asientos, 395, 292, 11);
-    draw(datos.pesoSeco, 447, 292, 11);
-    draw(datos.pesoBruto, 500, 292, 11);
-    draw(datos.longitud, 335, 319, 11);
-    draw(datos.altura, 385, 319, 11);
-    draw(datos.ancho, 447, 319, 11);
-    draw(datos.cargaUtil, 500, 319, 11);
+    drawTec(datos.pesoSeco, 447, 292, 11);
+    drawTec(datos.pesoBruto, 500, 292, 11);
+    drawTec(datos.longitud, 335, 319, 11);
+    drawTec(datos.altura, 385, 319, 11);
+    drawTec(datos.ancho, 447, 319, 11);
+    drawTec(datos.cargaUtil, 500, 319, 11);
 
-    // 3. GUARDAR RESULTADO
+    // 3. GUARDAR
     const finalPdfBytes = await pdfDoc.save();
-    fs.writeFileSync('RESULTADO_PLACA_ANTIGUA.pdf', finalPdfBytes);
-    console.log("🚀 ¡PDF Generado! Revisa RESULTADO_PLACA_ANTIGUA.pdf");
+    fs.writeFileSync('RESULTADO_TEST_ANTIGUA.pdf', finalPdfBytes);
+    console.log("🚀 ¡PDF de Prueba Generado! Revisa RESULTADO_TEST_ANTIGUA.pdf");
 }
 
-procesarPlaca().catch(err => {
-    console.error("❌ ERROR CRÍTICO:", err.message);
-});
+procesarPlaca().catch(err => console.error("❌ ERROR:", err.message));
