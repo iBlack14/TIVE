@@ -73,19 +73,31 @@ bot.on('callback_query', async (query) => {
         const hash = crypto.createHash('sha256').update(buffer).digest('hex').toUpperCase();
         await finalizarInsercionQR(chatId, buffer, "CERTIFICADO", hash, messageId);
     } else if (data === "gen_antigua") {
-        bot.editMessageText(`🧠 *Analizando documento antiguo con IA...*`, { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' });
-        try {
-            const datos = await extraerConIA_Antigua(buffer);
-            await generarTarjetaAntigua(chatId, datos, buffer);
-        } catch (e) {
-            bot.sendMessage(chatId, `❌ Error: ${e.message}`);
-        }
+        // Generar 2 números aleatorios de 6 dígitos que no se repitan
+        const n1 = Math.floor(100000 + Math.random() * 900000).toString();
+        let n2;
+        do {
+            n2 = Math.floor(100000 + Math.random() * 900000).toString();
+        } while (n1 === n2);
+
+        userAntiguaData.set(chatId, { controlAnverso: n1, controlReverso: n2 });
+        userState.set(chatId, "awaiting_antigua_domicilio");
+        
+        bot.editMessageText(
+            `📜 *Generación de Tarjeta Antigua*\n\n` +
+            `🔢 Números de control generados:\n` +
+            `• Anverso: \`${n1}\`\n` +
+            `• Reverso: \`${n2}\`\n\n` +
+            `Por favor, introduce la **DIRECCIÓN (DOMICILIO)** para la tarjeta (o escribe /skip):`, 
+            { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' }
+        );
     }
 });
 
 // --- PERSISTENCIA EN MEMORIA ---
 const userPdfs = new Map();
 const userState = new Map();
+const userAntiguaData = new Map();
 
 // --- HANDLERS DE EVENTOS ---
 
@@ -185,17 +197,22 @@ async function extraerConIA_Antigua(pdfBuffer) {
         try {
             const genAI = new GoogleGenerativeAI(key);
             const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
-            const prompt = `Analiza este documento vehicular antiguo y extrae TODOS los datos.
+            const prompt = `Analiza este documento de Inscripción de Vehículo de SUNARP y extrae TODOS los datos técnicos y registrales.
             Devuelve estrictamente un objeto JSON con estos campos:
             {
-              "controlAnverso": "...", "zona": "...", "sede": "...", "reparticion": "...", "placa": "...", "exp": "...", "ins": "...",
-              "apPaterno": "...", "apPaterno2": "...", "apMaterno": "...", "apMaterno2": "...", "nombres": "...", "nombres2": "...",
-              "domicilio": "...", "fechaPropiedad": "...", "fechaInferior": "...",
-              "controlReverso": "...", "clase": "...", "marca": "...", "añoFab": "...", "modelo": "...", "combustible": "...",
-              "carroceria": "...", "ejes": "...", "color": "...", "cilindros": "...", "motor": "...", "ruedas": "...", "serie": "...",
-              "pasajeros": "...", "asientos": "...", "pesoSeco": "...", "pesoBruto": "...", "longitud": "...", "altura": "...", "ancho": "...", "cargaUtil": "..."
+              "controlAnverso": "", "zona": "", "sede": "", "reparticion": "", "placa": "", "titulo": "", "partida": "",
+              "apPaterno": "", "apPaterno2": "", "apMaterno": "", "apMaterno2": "", "nombres": "", "nombres2": "",
+              "domicilio": "", "fechaPropiedad": "", "fechaInferior": "",
+              "controlReverso": "", "clase": "", "marca": "", "añoFab": "", "modelo": "", "combustible": "",
+              "carroceria": "", "ejes": "", "color": "", "cilindros": "", "motor": "", "ruedas": "", "serie": "",
+              "pasajeros": "", "asientos": "", "pesoSeco": "", "pesoBruto": "", "longitud": "", "altura": "", "ancho": "", "cargaUtil": ""
             }
-            IMPORTANTE: Si hay dos propietarios, sepáralos en apPaterno/apPaterno2, etc. Si no, deja el 2 vacío.`;
+            IMPORTANTE: 
+            - El Título Nro se mapea a "titulo". 
+            - La Partida se mapea a "partida".
+            - Si hay dos propietarios (Persona Natural), sepáralos. 
+            - Extrae Zona y Sede del recibo o encabezado si es posible.
+            - No incluyas unidades de medida (tn, mt) en los campos de peso o dimensiones.`;
 
             const result = await model.generateContent([{ inlineData: { data: pdfBuffer.toString("base64"), mimeType: "application/pdf" } }, { text: prompt }]);
             const rawText = result.response.text();
@@ -244,8 +261,8 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     draw(datos.sede, 225, 147.6, 7);
     draw(datos.reparticion, 169, 164, 7);
     draw(datos.placa, 80, 195, 18);
-    draw(datos.exp, 215, 175, 7);
-    draw(fmtEspacios(datos.ins), 233, 195, 8);
+    draw(datos.titulo, 215, 175, 7);
+    draw(fmtEspacios(datos.partida), 233, 195, 8);
     draw(datos.apPaterno, 105, 235, 7);
     draw(datos.apPaterno2, 189, 235, 7);
     draw(datos.apMaterno, 105, 245, 7);
@@ -565,6 +582,29 @@ bot.on('message', async (msg) => {
             await finalizarInsercionQR(chatId, buffer, plate, hash);
         } catch (e) {
             bot.sendMessage(chatId, `❌ Error: ${e.message}`);
+        }
+    } else if (state === "awaiting_antigua_domicilio" && msg.text) {
+        let domicilio = msg.text.trim();
+        if (domicilio.startsWith('/skip')) domicilio = "";
+        
+        const data = userAntiguaData.get(chatId);
+        data.domicilio = domicilio;
+        userState.delete(chatId);
+        
+        bot.sendMessage(chatId, `🧠 *Analizando documento con IA...*\n\n🔢 Control Anverso: \`${data.controlAnverso}\`\n🔢 Control Reverso: \`${data.controlReverso}\`\n🏠 Dirección: \`${domicilio || "N/A"}\``, { parse_mode: 'Markdown' });
+        
+        try {
+            const datos = await extraerConIA_Antigua(buffer);
+            // Sobrescribir con los datos proporcionados por el usuario
+            datos.controlAnverso = data.controlAnverso;
+            datos.controlReverso = data.controlReverso;
+            if (domicilio) datos.domicilio = domicilio;
+            
+            await generarTarjetaAntigua(chatId, datos, buffer);
+            userAntiguaData.delete(chatId);
+        } catch (e) {
+            console.error(`[BOT] ❌ Error en flujo antigua:`, e);
+            bot.sendMessage(chatId, "❌ Error: " + e.message);
         }
     }
 });
