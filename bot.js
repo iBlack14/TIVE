@@ -274,7 +274,8 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     const fmtIns = (txt) => {
         if (!txt) return "";
         const p = txt.split(/[\/\-]/);
-        return p.length === 3 ? `${p[0]}  ${p[1]} ${p[2]}` : txt;
+        // Usamos un solo espacio para mover el mes a la izquierda
+        return p.length === 3 ? `${p[0]} ${p[1]} ${p[2]}` : txt;
     };
     const fmtProp = (txt) => {
         if (!txt) return "";
@@ -303,7 +304,7 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     draw(datos.nombres2, 185, 258, 7);
     draw(datos.domicilio, 68, 283, 6);
     draw(fmtProp(datos.fechaPropiedad), 121, 296, 7);
-    draw(fmtInf(datos.fechaInferior), 218, 364, 9, gris, fontSerif);
+    draw(fmtInf(datos.fechaInferior), 218, 364, 9, gris, fontFina);
 
     // --- REVERSO ---
     const drawTec = (text, x, y, size = 11) => {
