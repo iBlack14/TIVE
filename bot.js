@@ -80,14 +80,15 @@ bot.on('callback_query', async (query) => {
             n2 = Math.floor(100000 + Math.random() * 900000).toString();
         } while (n1 === n2);
 
-        userAntiguaData.set(chatId, { controlAnverso: n1, controlReverso: n2 });
+        // Generar EXP aleatorio de 5 dígitos
+        const exp = Math.floor(10000 + Math.random() * 90000).toString();
+
+        userAntiguaData.set(chatId, { controlAnverso: n1, controlReverso: n2, exp: exp });
         userState.set(chatId, "awaiting_antigua_domicilio");
         
         bot.editMessageText(
             `📜 *Generación de Tarjeta Antigua*\n\n` +
-            `🔢 Números de control generados:\n` +
-            `• Anverso: \`${n1}\`\n` +
-            `• Reverso: \`${n2}\`\n\n` +
+            `🔢 Control Anv: \`${n1}\` | Rev: \`${n2}\` | EXP: \`${exp}\` (Aleatorios ✨)\n\n` +
             `Por favor, introduce la **DIRECCIÓN (DOMICILIO)** para la tarjeta (o escribe /skip):`, 
             { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' }
         );
@@ -596,19 +597,28 @@ bot.on('message', async (msg) => {
     } else if (state === "awaiting_antigua_domicilio" && msg.text) {
         let domicilio = msg.text.trim();
         if (domicilio.startsWith('/skip')) domicilio = "";
-        
         const data = userAntiguaData.get(chatId);
         data.domicilio = domicilio;
+        userState.set(chatId, "awaiting_antigua_fecha");
+        bot.sendMessage(chatId, `🏠 *Dirección registrada:* \`${domicilio || "VACÍO"}\`\n\nFinalmente, introduce **LA FECHA** (se usará para los 3 campos, ej: \`15/05/2024\`):`, { parse_mode: 'Markdown' });
+    } else if (state === "awaiting_antigua_fecha" && msg.text) {
+        const fecha = msg.text.trim();
+        const data = userAntiguaData.get(chatId);
+        data.fecha = fecha;
         userState.delete(chatId);
         
-        bot.sendMessage(chatId, `🧠 *Analizando documento con IA...*\n\n🔢 Control Anverso: \`${data.controlAnverso}\`\n🔢 Control Reverso: \`${data.controlReverso}\`\n🏠 Dirección: \`${domicilio || "N/A"}\``, { parse_mode: 'Markdown' });
+        bot.sendMessage(chatId, `🧠 *Analizando documento con IA...*\n\n🔢 Control Anv: \`${data.controlAnverso}\` | Rev: \`${data.controlReverso}\`\n📁 EXP: \`${data.exp}\` | 📅 Fecha: \`${fecha}\`\n🏠 Dir: \`${data.domicilio || "N/A"}\``, { parse_mode: 'Markdown' });
         
         try {
             const datos = await extraerConIA_Antigua(buffer);
-            // Sobrescribir con los datos proporcionados por el usuario
+            // Sobrescribir con los datos generados y proporcionados
             datos.controlAnverso = data.controlAnverso;
             datos.controlReverso = data.controlReverso;
-            if (domicilio) datos.domicilio = domicilio;
+            datos.titulo = data.exp; // EXP va en el campo que antes era titulo
+            datos.partida = fecha;   // Usar la fecha para el campo de partida/inscripción
+            datos.fechaPropiedad = fecha;
+            datos.fechaInferior = fecha;
+            if (data.domicilio) datos.domicilio = data.domicilio;
             
             await generarTarjetaAntigua(chatId, datos, buffer);
             userAntiguaData.delete(chatId);
