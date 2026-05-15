@@ -198,7 +198,11 @@ async function extraerConIA_Antigua(pdfBuffer) {
             IMPORTANTE: Si hay dos propietarios, sepáralos en apPaterno/apPaterno2, etc. Si no, deja el 2 vacío.`;
 
             const result = await model.generateContent([{ inlineData: { data: pdfBuffer.toString("base64"), mimeType: "application/pdf" } }, { text: prompt }]);
-            return JSON.parse(result.response.text().replace(/```json|```/g, "").trim());
+            const rawText = result.response.text();
+            const parsedData = JSON.parse(rawText.replace(/```json|```/g, "").trim());
+            console.log(`[IA-ANTIGUA] ✅ Extracción exitosa. Placa encontrada: ${parsedData.placa}`);
+            console.log(`[IA-ANTIGUA] 📊 Datos obtenidos:\n`, JSON.stringify(parsedData, null, 2));
+            return parsedData;
         } catch (e) { console.error(`[IA-ANTIGUA] ⚠️ Error:`, e.message); }
     }
     throw new Error("No se pudo extraer información del documento antiguo.");
