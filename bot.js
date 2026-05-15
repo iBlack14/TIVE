@@ -130,6 +130,18 @@ const escapeMarkdown = (text) => {
 
 const safe = (t) => t ? String(t).trim() : '';
 
+const fmtPlaca = (p) => {
+    if (!p) return "";
+    let clean = p.replace(/[^A-Z0-9]/gi, "").toUpperCase();
+    if (clean.length === 6) {
+        // Si empieza con 4 números es formato Moto (XXXX-XX)
+        if (/^\d{4}/.test(clean)) return `${clean.substring(0, 4)}-${clean.substring(4)}`;
+        // Si no, es formato Carro (XXX-XXX)
+        return `${clean.substring(0, 3)}-${clean.substring(3)}`;
+    }
+    return clean;
+};
+
 // --- FUNCIONES TÉCNICAS ---
 const C128_PATTERNS = { '0': '11011001100', '1': '11001101100', '2': '11001100110', '3': '10001101100', '4': '10001100110', '5': '10110000110', '6': '10110000110', '7': '10110110000', '8': '10110011011', '9': '11001011000', 'A': '11000101100', 'B': '11000100110', 'C': '11011000100', 'D': '11011000010', 'E': '11011011000', 'F': '11011001101', 'G': '11011011011', 'H': '11001101101', 'I': '11001101111', 'J': '11011110110', 'K': '11011111011', 'L': '11110110110', 'M': '11110110111', 'N': '11110111101', 'O': '11110111111', 'P': '11001101101', 'Q': '11001101111', 'R': '11011110110', 'S': '11011111011', 'T': '11110110110', 'U': '11110110111', 'V': '11110111101', 'W': '11110111111', 'X': '11001101101', 'Y': '11001101111', 'Z': '11011110110', '-': '11000111010', '.': '11011011110', ' ': '11011011011', ':': '11011111010' };
 
@@ -263,8 +275,8 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     draw(datos.zona, 269, 139, 8);
     draw(datos.sede, 225, 147.6, 7);
     draw(datos.reparticion, 169, 164, 7);
-    draw(datos.placa, 80, 195, 18);
-    draw(datos.titulo, 215, 175, 7);
+    draw(fmtPlaca(datos.placa), 80, 195, 18);
+    draw(datos.titulo, 202, 178, 9);
     draw(fmtEspacios(datos.partida), 233, 195, 8);
     draw(datos.apPaterno, 105, 235, 7);
     draw(datos.apPaterno2, 189, 235, 7);
