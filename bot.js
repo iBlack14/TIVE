@@ -73,23 +73,24 @@ bot.on('callback_query', async (query) => {
         const hash = crypto.createHash('sha256').update(buffer).digest('hex').toUpperCase();
         await finalizarInsercionQR(chatId, buffer, "CERTIFICADO", hash, messageId);
     } else if (data === "gen_antigua") {
-        // Generar 2 números aleatorios de 6 dígitos que no se repitan
+        // Generar datos aleatorios
         const n1 = Math.floor(100000 + Math.random() * 900000).toString();
-        let n2;
-        do {
-            n2 = Math.floor(100000 + Math.random() * 900000).toString();
-        } while (n1 === n2);
-
-        // Generar EXP aleatorio de 5 dígitos
+        let n2; do { n2 = Math.floor(100000 + Math.random() * 900000).toString(); } while (n1 === n2);
         const exp = Math.floor(10000 + Math.random() * 90000).toString();
 
         userAntiguaData.set(chatId, { controlAnverso: n1, controlReverso: n2, exp: exp });
-        userState.set(chatId, "awaiting_antigua_domicilio");
+        userState.set(chatId, "awaiting_antigua_zona");
         
+        // Iniciar IA en segundo plano para tener la fecha lista al final
+        extraerConIA_Antigua(buffer).then(datos => {
+            const current = userAntiguaData.get(chatId);
+            if (current) current.datosIA = datos;
+        }).catch(e => console.error("Error IA fondo:", e.message));
+
         bot.editMessageText(
             `📜 *Generación de Tarjeta Antigua*\n\n` +
             `🔢 Control Anv: \`${n1}\` | Rev: \`${n2}\` | EXP: \`${exp}\` (Aleatorios ✨)\n\n` +
-            `Por favor, introduce la **DIRECCIÓN (DOMICILIO)** para la tarjeta (o escribe /skip):`, 
+            `Introduce la **ZONA** (ej: III):`, 
             { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' }
         );
     }
@@ -203,7 +204,7 @@ async function extraerConIA_Antigua(pdfBuffer) {
             {
               "controlAnverso": "", "zona": "", "sede": "", "reparticion": "", "placa": "", "titulo": "", "partida": "",
               "apPaterno": "", "apPaterno2": "", "apMaterno": "", "apMaterno2": "", "nombres": "", "nombres2": "",
-              "domicilio": "", "fechaPropiedad": "", "fechaInferior": "",
+              "domicilio": "", "fechaPropiedad": "", "fechaInferior": "", "fechaAsiento": "",
               "controlReverso": "", "clase": "", "marca": "", "añoFab": "", "modelo": "", "combustible": "",
               "carroceria": "", "ejes": "", "color": "", "cilindros": "", "motor": "", "ruedas": "", "serie": "",
               "pasajeros": "", "asientos": "", "pesoSeco": "", "pesoBruto": "", "longitud": "", "altura": "", "ancho": "", "cargaUtil": ""
@@ -211,6 +212,7 @@ async function extraerConIA_Antigua(pdfBuffer) {
             IMPORTANTE: 
             - El Título Nro se mapea a "titulo". 
             - La Partida se mapea a "partida".
+            - Busca específicamente la "Fecha Asiento" (suele estar al final) y ponla en "fechaAsiento".
             - Si hay dos propietarios (Persona Natural), sepáralos. 
             - Extrae Zona y Sede del recibo o encabezado si es posible.
             - No incluyas unidades de medida (tn, mt) en los campos de peso o dimensiones.`;
@@ -594,36 +596,70 @@ bot.on('message', async (msg) => {
         } catch (e) {
             bot.sendMessage(chatId, `❌ Error: ${e.message}`);
         }
+    } else if (state === "awaiting_antigua_zona" && msg.text) {
+        userAntiguaData.get(chatId).zona = msg.text.trim().toUpperCase();
+        userState.set(chatId, "awaiting_antigua_sede");
+        bot.sendMessage(chatId, "📍 Introduce la **SEDE** (ej: YURIMAGUAS):", { parse_mode: 'Markdown' });
+    } else if (state === "awaiting_antigua_sede" && msg.text) {
+        userAntiguaData.get(chatId).sede = msg.text.trim().toUpperCase();
+        userState.set(chatId, "awaiting_antigua_reparticion");
+        bot.sendMessage(chatId, "📂 Introduce la **REPARTICIÓN** (ej: YURIMAGUAS):", { parse_mode: 'Markdown' });
+    } else if (state === "awaiting_antigua_reparticion" && msg.text) {
+        userAntiguaData.get(chatId).reparticion = msg.text.trim().toUpperCase();
+        userState.set(chatId, "awaiting_antigua_domicilio");
+        bot.sendMessage(chatId, "🏠 Introduce la **DIRECCIÓN (DOMICILIO)** (o /skip):", { parse_mode: 'Markdown' });
     } else if (state === "awaiting_antigua_domicilio" && msg.text) {
         let domicilio = msg.text.trim();
         if (domicilio.startsWith('/skip')) domicilio = "";
         const data = userAntiguaData.get(chatId);
         data.domicilio = domicilio;
-        userState.set(chatId, "awaiting_antigua_fecha");
-        bot.sendMessage(chatId, `🏠 *Dirección registrada:* \`${domicilio || "VACÍO"}\`\n\nFinalmente, introduce **LA FECHA** (se usará para los 3 campos, ej: \`15/05/2024\`):`, { parse_mode: 'Markdown' });
+        
+        // Esperar a que la IA termine si aún no lo ha hecho
+        const checkIA = async () => {
+            if (!data.datosIA) {
+                const status = await bot.sendMessage(chatId, "⏳ *Esperando que la IA detecte la fecha...*", { parse_mode: 'Markdown' });
+                while (!data.datosIA) { await new Promise(r => setTimeout(r, 1000)); }
+                bot.deleteMessage(chatId, status.message_id).catch(() => {});
+            }
+            const fechaSugerida = data.datosIA.fechaAsiento || data.datosIA.fechaInferior || "";
+            userState.set(chatId, "awaiting_antigua_fecha");
+            bot.sendMessage(chatId, 
+                `✅ **Datos Registrados.**\n\n` +
+                `📅 **Fecha Detectada:** \`${fechaSugerida}\`\n\n` +
+                `Introduce **LA FECHA** (o escribe /ok para usar la detectada):`, 
+                { parse_mode: 'Markdown' }
+            );
+        };
+        checkIA();
     } else if (state === "awaiting_antigua_fecha" && msg.text) {
-        const fecha = msg.text.trim();
+        let fecha = msg.text.trim();
         const data = userAntiguaData.get(chatId);
+        if (fecha.toLowerCase() === "/ok" && data.datosIA) {
+            fecha = data.datosIA.fechaAsiento || data.datosIA.fechaInferior || "";
+        }
         data.fecha = fecha;
         userState.delete(chatId);
         
-        bot.sendMessage(chatId, `🧠 *Analizando documento con IA...*\n\n🔢 Control Anv: \`${data.controlAnverso}\` | Rev: \`${data.controlReverso}\`\n📁 EXP: \`${data.exp}\` | 📅 Fecha: \`${fecha}\`\n🏠 Dir: \`${data.domicilio || "N/A"}\``, { parse_mode: 'Markdown' });
+        bot.sendMessage(chatId, `✨ *Generando Tarjeta Antigua...*`, { parse_mode: 'Markdown' });
         
         try {
-            const datos = await extraerConIA_Antigua(buffer);
-            // Sobrescribir con los datos generados y proporcionados
+            const datos = data.datosIA || await extraerConIA_Antigua(buffer);
+            // Sobrescribir con los datos manuales y generados
             datos.controlAnverso = data.controlAnverso;
             datos.controlReverso = data.controlReverso;
-            datos.titulo = data.exp; // EXP va en el campo que antes era titulo
-            datos.partida = fecha;   // Usar la fecha para el campo de partida/inscripción
+            datos.titulo = data.exp;
+            datos.partida = fecha;
             datos.fechaPropiedad = fecha;
             datos.fechaInferior = fecha;
+            datos.zona = data.zona;
+            datos.sede = data.sede;
+            datos.reparticion = data.reparticion;
             if (data.domicilio) datos.domicilio = data.domicilio;
             
             await generarTarjetaAntigua(chatId, datos, buffer);
             userAntiguaData.delete(chatId);
         } catch (e) {
-            console.error(`[BOT] ❌ Error en flujo antigua:`, e);
+            console.error(`[BOT] ❌ Error final:`, e);
             bot.sendMessage(chatId, "❌ Error: " + e.message);
         }
     }
