@@ -270,6 +270,23 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
         return txt.replace(/[\/\-]/g, " ").replace(/\s+/g, "   ").trim();
     };
 
+    // Funciones de formato específicas para cada fecha según los cuadros de la plantilla
+    const fmtIns = (txt) => {
+        if (!txt) return "";
+        const p = txt.split(/[\/\-]/);
+        return p.length === 3 ? `${p[0]}  ${p[1]} ${p[2]}` : txt;
+    };
+    const fmtProp = (txt) => {
+        if (!txt) return "";
+        const p = txt.split(/[\/\-]/);
+        return p.length === 3 ? `${p[0]}  ${p[1]}  ${p[2]}` : txt;
+    };
+    const fmtInf = (txt) => {
+        if (!txt) return "";
+        const p = txt.split(/[\/\-]/);
+        return p.length === 3 ? `${p[0]}   ${p[1]}  ${p[2]}` : txt;
+    };
+
     // --- POSICIONAMIENTO AJUSTADO EN EL TEST ---
     draw(datos.controlAnverso, 220, 120, 19, rgb(0.8, 0.1, 0.1), fontFina);
     draw(datos.zona, 269, 139, 8);
@@ -277,7 +294,7 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     draw(datos.reparticion, 169, 164, 7);
     draw(fmtPlaca(datos.placa), 80, 195, 18);
     draw(datos.titulo, 202, 178, 9);
-    draw(fmtEspacios(datos.partida), 233, 195, 8);
+    draw(fmtIns(datos.partida), 233, 195, 8);
     draw(datos.apPaterno, 105, 235, 7);
     draw(datos.apPaterno2, 189, 235, 7);
     draw(datos.apMaterno, 105, 245, 7);
@@ -285,8 +302,8 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     draw(datos.nombres, 105, 257, 7);
     draw(datos.nombres2, 185, 258, 7);
     draw(datos.domicilio, 68, 283, 6);
-    draw(fmtEspacios(datos.fechaPropiedad), 121, 296, 7);
-    draw(fmtEspacios(datos.fechaInferior), 218, 364, 9, gris, fontSerif);
+    draw(fmtProp(datos.fechaPropiedad), 121, 296, 7);
+    draw(fmtInf(datos.fechaInferior), 218, 364, 9, gris, fontSerif);
 
     // --- REVERSO ---
     const drawTec = (text, x, y, size = 11) => {
