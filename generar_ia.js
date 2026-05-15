@@ -40,7 +40,7 @@ function drawRealBarcode(page, text, x, y, width, height) {
 async function extraerConIA(pdfPath) {
     console.log("🧠 La IA está analizando el documento...");
     // Usando 1.5 Flash que tiene más cuota gratuita
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     
     const pdfData = fs.readFileSync(pdfPath).toString("base64");
     const prompt = `Analiza este documento TIVE (Tarjeta de Identificacion Vehicular Electronica). 

@@ -20,7 +20,7 @@
     "@google/generative-ai": "^0.24.1",
     "@pdf-lib/fontkit": "^1.1.1",
     "bwip-js": "^4.10.1",
-    "canvas": "^3.2.3",
+    "skia-canvas": "^1.0.2",
     "concurrently": "^7.6.0",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
