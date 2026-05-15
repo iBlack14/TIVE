@@ -208,6 +208,11 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     console.log(`[ANTIGUA] 🎨 Generando tarjeta para: ${datos.placa}`);
     const templatePath = getTemplatePath('placaplantilla.pdf');
     const pdfDoc = await PDFDocument.load(fs.readFileSync(templatePath));
+    
+    // Configurar metadatos profesionales para el encabezado del visor PDF
+    pdfDoc.setTitle(`CERTIFICADO DE IDENTIFICACIÓN VEHICULAR - ${datos.placa}`);
+    pdfDoc.setAuthor('SUNARP - Sistema TIVE');
+    
     pdfDoc.registerFontkit(fontkit);
     
     const fontB = await pdfDoc.embedFont(FONT_BYTES);
@@ -271,8 +276,8 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     draw(datos.cargaUtil, 500, 319, 11);
 
     const pdfBytes = await pdfDoc.save();
-    const fileName = `ANTIGUA-${(datos.placa || 'DOC').toUpperCase()}.pdf`;
-    await bot.sendDocument(chatId, Buffer.from(pdfBytes), { caption: "✅ Tarjeta Antigua Generada" }, { filename: fileName });
+    const fileName = `CERTIFICADO_TIV_${(datos.placa || 'DOC').toUpperCase()}.pdf`;
+    await bot.sendDocument(chatId, Buffer.from(pdfBytes), { caption: "✅ Tarjeta Generada con Éxito" }, { filename: fileName });
 }
 
 async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = null) {
@@ -595,7 +600,7 @@ async function finalizarInsercionQR(chatId, buffer, placa, hash, messageId = nul
     fs.writeFileSync(finalPath, Buffer.from(pdfBytes));
     console.log(`[BOT] ✅ Certificado guardado físicamente en: ${finalPath}`);
 
-    const fileName = `Certificado-Tive-${hash.replace(/\\D/g, '').substring(0,8)}.pdf`;
+    const fileName = `Certificado-Tive-${hash.replace(/[^a-zA-Z0-9]/g, '').substring(0,8)}.pdf`;
     
     await bot.sendDocument(chatId, Buffer.from(pdfBytes), { 
         caption: 
