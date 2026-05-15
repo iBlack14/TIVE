@@ -11,8 +11,8 @@ const genAI = new GoogleGenerativeAI(GEMINI_KEY);
 
 async function procesarPlaca() {
     console.log("📂 Cargando archivos...");
-    const pdfDatosBuffer = fs.readFileSync('placacondatos.pdf');
-    const plantillaBuffer = fs.readFileSync('placaplantilla.pdf');
+    const pdfDatosBuffer = fs.readFileSync(path.join(__dirname, 'placacondatos.pdf'));
+    const plantillaBuffer = fs.readFileSync(path.join(__dirname, 'placaplantilla.pdf'));
     const FONT_PATH = path.join(__dirname, 'tarjeta', 'font_bold.ttf');
 
     if (!fs.existsSync(FONT_PATH)) {

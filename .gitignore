@@ -3,9 +3,10 @@ node_modules/
 .env.local
 .env.*.local
 
-# Ignorar PDFs temporales o de certificados, pero PERMITIR los de la carpeta tarjeta
+# Ignorar PDFs temporales o de certificados, pero PERMITIR los de la carpeta tarjeta y la plantilla base
 *.pdf
 !tarjeta/*.pdf
+!placaplantilla.pdf
 
 temp_qr.png
 servicio/verCertificado/*.pdf

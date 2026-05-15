@@ -4,5 +4,6 @@ npm-debug.log
 .git
 servicio/verCertificado/*
 
-# Permitir los PDFs de la carpeta tarjeta, pero ignorar los demás
+# Permitir los PDFs de la carpeta tarjeta y la plantilla base, pero ignorar los demás
 !tarjeta/*.pdf
+!placaplantilla.pdf

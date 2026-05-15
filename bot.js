@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const bwipjs = require('bwip-js');
-const { PDFDocument, rgb } = require('pdf-lib');
+const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const fontkit = require('@pdf-lib/fontkit');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const pdf2img = require('pdf-img-convert');
@@ -131,9 +131,21 @@ function drawRealBarcode(page, text, x, y, width, height) {
 }
 
 function getTemplatePath(name) {
-    const p = [path.join(__dirname, 'tarjeta', name), path.join(__dirname, name), path.join(process.cwd(), 'tarjeta', name), path.join(process.cwd(), name)];
-    for (const pathFound of p) { if (fs.existsSync(pathFound)) return pathFound; }
-    throw new Error(`No se encontró la plantilla ${name}.`);
+    const p = [
+        path.join(__dirname, 'tarjeta', name),
+        path.join(__dirname, name),
+        path.join(process.cwd(), 'tarjeta', name),
+        path.join(process.cwd(), name)
+    ];
+    console.log(`[DEBUG] 🔍 Buscando plantilla: ${name}`);
+    for (const pathFound of p) {
+        console.log(`[DEBUG] 📂 Probando ruta: ${pathFound}`);
+        if (fs.existsSync(pathFound)) {
+            console.log(`[DEBUG] ✅ Encontrada en: ${pathFound}`);
+            return pathFound;
+        }
+    }
+    throw new Error(`No se encontró la plantilla ${name}. Rutas revisadas: ${p.join(', ')}`);
 }
 
 async function extraerConIA(pdfBuffer) {
