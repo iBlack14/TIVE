@@ -143,7 +143,7 @@ async function extraerConIA(pdfBuffer) {
     for (const key of API_KEYS) {
         try {
             const genAI = new GoogleGenerativeAI(key);
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
             const prompt = `Analiza este documento TIVE (Tarjeta de Identificación Vehicular Electrónica) de SUNARP. 
             Extrae TODOS los datos técnicos y registrales. Es CRÍTICO que encuentres la PLACA.
             Devuelve SOLO un objeto JSON con estas llaves exactas:
