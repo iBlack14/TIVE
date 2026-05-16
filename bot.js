@@ -258,7 +258,7 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
 
     const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "";
 
-    const draw = (text, x, y, size = 7, color = gris, customFont = fontSerif, forceUpper = true) => {
+    const draw = (text, x, y, size = 7, color = gris, customFont = fontB, forceUpper = true) => {
         if (!text) return;
         const txt = forceUpper ? String(text).toUpperCase() : String(text);
         page.drawText(txt, { x, y: height - y, size, font: customFont, color });
@@ -269,29 +269,29 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
         return txt.replace(/[\/\-]/g, " ").replace(/\s+/g, "   ").trim();
     };
 
-    const drawSeg = (txt, x, y, s1 = 12, s2 = 12, size = 7, color = gris, font = fontSerif) => {
+    const drawSeg = (txt, x, y, s1 = 12, s2 = 12, size = 7, color = gris, font = fontB) => {
         if (!txt) return;
         draw(txt, x, y, size, color, font);
     };
 
     // draw(datos.controlAnverso, 220, 120, 19, rgb(0.8, 0.1, 0.1), fontFina);
-    draw(datos.zona, 269, 139, 8);
-    draw(datos.sede, 225, 147.6, 7);
-    draw(datos.reparticion, 169, 164, 7);
-    draw(datos.placaSede, 90, 176, 7); // Placa Sede arriba y a la derecha
-    draw(fmtPlaca(datos.placa), 80, 195, 18);
+    draw(datos.zona, 269, 139, 9);
+    draw(datos.sede, 225, 147.6, 8);
+    draw(datos.reparticion, 169, 164, 8);
+    draw(datos.placaSede, 90, 176, 8.5); // Placa Sede
+    draw(fmtPlaca(datos.placa), 80, 195, 18.5);
     // draw(datos.titulo, 202, 178, 9);
     drawSeg(datos.partida, 233, 195, 11, 10, 8); 
-    draw(datos.apPaterno, 105, 235, 7);
-    draw(datos.apPaterno2, 189, 235, 7);
-    draw(datos.apMaterno, 105, 245, 7);
-    draw(datos.apMaterno2, 189, 245, 7);
-    draw(datos.nombres, 105, 257, 7);
-    draw(datos.nombres2, 185, 258, 7);
-    draw(datos.domicilio, 68, 283, 6);
-    draw(datos.sedeDomicilio, 105, 269, 6);
-    drawSeg(datos.fechaPropiedad, 126, 296, 10, 11, 8.5);
-    drawSeg(datos.fechaInferior, 218, 364, 15, 14, 9, gris);
+    draw(datos.apPaterno, 105, 235, 8);
+    draw(datos.apPaterno2, 189, 235, 8);
+    draw(datos.apMaterno, 105, 245, 8);
+    draw(datos.apMaterno2, 189, 245, 8);
+    draw(datos.nombres, 105, 257, 8);
+    draw(datos.nombres2, 185, 258, 8);
+    draw(datos.domicilio, 68, 283, 7.2);
+    draw(datos.sedeDomicilio, 105, 269, 7.5);
+    drawSeg(datos.fechaPropiedad, 126, 296, 10, 11, 9.5);
+    drawSeg(`${datos.fechaInferior}  ( INS )`, 218, 364, 15, 14, 10.5, gris);
 
     const drawTec = (text, x, y, size = 11) => {
         if (!text) return;
@@ -304,7 +304,7 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
 
     // draw(datos.controlReverso, 480, 118, 19, rgb(0.8, 0.1, 0.1), fontFina);
     draw(datos.clase, 325, 149, 10);
-    draw(datos.marca, 435, 149, 11);
+    draw(datos.marca, 425, 149, 11);
     draw(datos.añoFab, 510, 145, 11);
     draw(datos.modelo, 337, 173, 11);
     draw(datos.combustible, 485, 176, 11);
