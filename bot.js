@@ -130,7 +130,7 @@ const safe = (t) => t ? String(t).trim() : '';
 const fmtPlaca = (p) => {
     if (!p) return "";
     let normalized = p.trim().toUpperCase();
-    
+
     // Si el usuario ya puso un guion y tiene 6 caracteres alfanuméricos, respetarlo
     if (normalized.includes("-")) {
         let parts = normalized.split("-");
@@ -547,8 +547,8 @@ bot.on('document', async (msg) => {
             parse_mode: 'Markdown',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: "🚀 Generar Tarjeta TIVE (IA)", callback_data: "ask_qr" }],
-                    [{ text: "📜 Generar Tarjeta Antigua (IA)", callback_data: "gen_antigua" }],
+                    [{ text: "🚀 Generar TIVE", callback_data: "ask_qr" }],
+                    [{ text: "📜 Generar Tarjeta Antigua", callback_data: "gen_antigua" }],
                     [{ text: "🔐 Insertar QR en PDF Original", callback_data: "insert_qr_only" }]
                 ]
             }
