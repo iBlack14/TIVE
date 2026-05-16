@@ -129,7 +129,18 @@ const safe = (t) => t ? String(t).trim() : '';
 
 const fmtPlaca = (p) => {
     if (!p) return "";
-    let clean = p.replace(/[^A-Z0-9]/gi, "").toUpperCase();
+    let normalized = p.trim().toUpperCase();
+    
+    // Si el usuario ya puso un guion y tiene 6 caracteres alfanuméricos, respetarlo
+    if (normalized.includes("-")) {
+        let parts = normalized.split("-");
+        let alnumOnly = normalized.replace(/[^A-Z0-9]/g, "");
+        if (alnumOnly.length === 6 && parts.length === 2) {
+            return normalized;
+        }
+    }
+
+    let clean = normalized.replace(/[^A-Z0-9]/gi, "");
     if (clean.length === 6) {
         if (/^\d{4}/.test(clean)) return `${clean.substring(0, 4)}-${clean.substring(4)}`;
         return `${clean.substring(0, 3)}-${clean.substring(3)}`;
