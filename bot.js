@@ -27,9 +27,6 @@ const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 // Limpieza inicial silenciosa
 bot.deleteWebHook({ drop_pending_updates: true }).catch(() => {});
 
-// Limpieza inicial silenciosa
-bot.deleteWebHook({ drop_pending_updates: true }).catch(() => {});
-
 // 1. Comando de prueba
 bot.onText(/\/ping/, (msg) => {
     bot.sendMessage(msg.chat.id, "🏓 ¡PONG! El bot está vivo y escuchando.");
@@ -112,12 +109,13 @@ const QR_X = parseFloat(process.env.QR_X) || 12.2;
 const QR_Y = parseFloat(process.env.QR_Y) || 10.2;
 const QR_SIZE = parseFloat(process.env.QR_SIZE) || 72;
 
-const uploadDir = path.join(__dirname, 'servicio', 'verCertificado');
+// ✅ CAMBIO: Carpeta actualizada a /servicio/verCertificado/Tive/
+const uploadDir = path.join(__dirname, 'servicio', 'verCertificado', 'Tive');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 // Sistema de autorización para múltiples IDs
 const isAuthorized = (msg) => {
-    if (ADMIN_IDS.length === 0) return true; // Si no hay IDs, acceso libre
+    if (ADMIN_IDS.length === 0) return true;
     const userId = (msg.from.id || "").toString();
     const authorized = ADMIN_IDS.includes(userId);
     if (!authorized) console.log(`[AUTH] 🚫 Intento de acceso denegado para ID: ${userId}`);
@@ -134,9 +132,7 @@ const fmtPlaca = (p) => {
     if (!p) return "";
     let clean = p.replace(/[^A-Z0-9]/gi, "").toUpperCase();
     if (clean.length === 6) {
-        // Si empieza con 4 números es formato Moto (XXXX-XX)
         if (/^\d{4}/.test(clean)) return `${clean.substring(0, 4)}-${clean.substring(4)}`;
-        // Si no, es formato Carro (XXX-XXX)
         return `${clean.substring(0, 3)}-${clean.substring(3)}`;
     }
     return clean;
@@ -245,7 +241,6 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     const templatePath = getTemplatePath('placaplantilla.pdf');
     const pdfDoc = await PDFDocument.load(fs.readFileSync(templatePath));
     
-    // Configurar metadatos profesionales para el encabezado del visor PDF
     pdfDoc.setTitle(`CERTIFICADO DE IDENTIFICACIÓN VEHICULAR - ${datos.placa}`);
     pdfDoc.setAuthor('SUNARP - Sistema TIVE');
     
@@ -265,13 +260,11 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
         page.drawText(String(text).toUpperCase(), { x, y: height - y, size, font: customFont, color });
     };
 
-    // Función para forzar espacios anchos en fechas (ej: 12/01/2007 -> 12   01   2007)
     const fmtEspacios = (txt) => {
         if (!txt) return "";
         return txt.replace(/[\/\-]/g, " ").replace(/\s+/g, "   ").trim();
     };
 
-    // Función para dibujo segmentado de fechas para control total
     const drawSeg = (txt, x, y, s1 = 12, s2 = 12, size = 7, color = gris, font = fontSerifNorm) => {
         if (!txt) return;
         const p = String(txt).split(/[\/\-]/);
@@ -281,17 +274,13 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
         draw(p[2], x + s1 + s2, y, size, color, font);
     };
 
-    // --- POSICIONAMIENTO AJUSTADO EN EL TEST ---
     draw(datos.controlAnverso, 220, 120, 19, rgb(0.8, 0.1, 0.1), fontFina);
     draw(datos.zona, 269, 139, 8);
     draw(datos.sede, 225, 147.6, 7);
     draw(datos.reparticion, 169, 164, 7);
     draw(fmtPlaca(datos.placa), 80, 195, 18);
     draw(datos.titulo, 202, 178, 9);
-    
-    // 1. INS: Espaciado 11px y 10px (ajustado: mes un poquito más a la izquierda)
     drawSeg(datos.partida, 233, 195, 11, 10, 8); 
-    
     draw(datos.apPaterno, 105, 235, 7);
     draw(datos.apPaterno2, 189, 235, 7);
     draw(datos.apMaterno, 105, 245, 7);
@@ -299,18 +288,12 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     draw(datos.nombres, 105, 257, 7);
     draw(datos.nombres2, 185, 258, 7);
     draw(datos.domicilio, 68, 283, 6);
-    
-    // 2. PROPIEDAD: Espaciado 10px y 11px (ajustado: año más a la izquierda)
     drawSeg(datos.fechaPropiedad, 121, 296, 10, 11, 7);
-    
-    // 3. INFERIOR: Espaciado 15px y 14px (ajustado: año un poquito a la izquierda)
     drawSeg(datos.fechaInferior, 218, 364, 15, 14, 9, gris, fontSerifNorm);
 
-    // --- REVERSO ---
     const drawTec = (text, x, y, size = 11) => {
         if (!text) return;
         let finalX = x;
-        // Si contiene MT o TN, movemos 7 unidades a la izquierda
         if (String(text).toUpperCase().includes("MT") || String(text).toUpperCase().includes("TN")) {
             finalX -= 7;
         }
@@ -340,14 +323,15 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     drawTec(datos.cargaUtil, 500, 319, 11);
 
     const pdfBytes = await pdfDoc.save();
-    const fileName = `CERTIFICADO_TIV_${(datos.placa || 'DOC').toUpperCase()}.pdf`;
-    await bot.sendDocument(chatId, Buffer.from(pdfBytes), { caption: "✅ Tarjeta Generada con Éxito" }, { filename: fileName });
+
+    // ✅ CAMBIO: Nombre del archivo → Tarjeta_Antigua_PLACA.pdf
+    const fileName = `Tarjeta_Antigua_${(datos.placa || 'DOC').toUpperCase()}.pdf`;
+    await bot.sendDocument(chatId, Buffer.from(pdfBytes), { caption: "✅ Tarjeta Antigua Generada con Éxito" }, { filename: fileName });
 }
 
 async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = null) {
     const safe = (val) => (val || '').toString().trim();
 
-    // Limpieza de duplicados para Zona y Sede (evita que salga "ZONA REGISTRAL N° ZONA REGISTRAL N° III")
     let zonaLimpia = safe(datos.zona);
     let sedeLimpia = safe(datos.sede);
 
@@ -382,25 +366,18 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
     pageA.drawText(safe(datos.codVerif), { x: 213, y: hA - 142, size: 4.5, font: fontBAnt, color: negro });
     pageA.drawText(safe(datos.tituloNo), { x: 183, y: hA - 149.5, size: 4.5, font: fontBAnt, color: negro });
     pageA.drawText(safe(datos.fechaFinal), { x: 177, y: hA - 158, size: 4.5, font: fontBAnt, color: negro });
-    // Generar código de barras horizontal profesional (Anverso)
+
     const barImgAnv = await bwipjs.toBuffer({
         bcid: 'code128',
         text: safe(datos.placa),
-        scale: 4,           // Escala óptima
-        height: 15,         // Barras más altas para mejor escaneo
-        includetext: false, // ELIMINAMOS EL TEXTO DE ABAJO
+        scale: 4,
+        height: 15,
+        includetext: false,
     });
     const pngBarAnv = await pdfAnt.embedPng(barImgAnv);
-    
-    // Dibujamos el código con las medidas exactas pedidas (82x18)
-    pageA.drawImage(pngBarAnv, { 
-        x: 10, 
-        y: hA - 168, 
-        width: 82, 
-        height: 18 
-    });
+    pageA.drawImage(pngBarAnv, { x: 10, y: hA - 168, width: 82, height: 18 });
 
-    const finalQR = qrCustomLink || `${DOMAIN_URL}/verCertificado/TIVE-${safe(datos.placa).toUpperCase()}`;
+    const finalQR = qrCustomLink || `${DOMAIN_URL}/servicio/verCertificado/Tive/TIVE-${safe(datos.placa).toUpperCase()}`;
     const qrImg = await pdfAnt.embedPng(await QRCode.toDataURL(finalQR, { margin: 1 }));
     pageA.drawImage(qrImg, { x: 100, y: hA - 170, width: 52, height: 52 });
 
@@ -422,6 +399,7 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
     dR(datos.altura, 115, 134.6); dR(datos.ancho, 115, 141.4);
     dR(datos.cilindrada, 203, 121); dR(datos.pBruto, 203, 127.8);
     dR(datos.pNeto, 203, 134.6); dR(datos.cargaUtil, 203, 142);
+
     const barText = 
         `📋 FICHA TÉCNICA TIVE\n` +
         `━━━━━━━━━━━━━━━━━\n` +
@@ -445,7 +423,7 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
             if (images && images.length > 0) {
                 const imgBuffer = Buffer.from(images[0]);
                 const metadata = await sharp(imgBuffer).metadata();
-                const scale = 2000 / 612; // Basado en el ancho estándar de SUNARP PDF
+                const scale = 2000 / 612;
 
                 let left = Math.round(403.05 * scale);
                 let top = Math.round(790 * scale);
@@ -464,14 +442,10 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
                         .toBuffer();
 
                     const sigImg = await pdfRev.embedPng(sigCrop);
-                    // AJUSTA AQUÍ LA POSICIÓN DE LA FIRMA:
-                    // x: más alto = más a la derecha | más bajo = más a la izquierda
-                    // y: posición desde abajo hacia arriba
                     pageR.drawImage(sigImg, { x: 184, y: 4, width: 55, height: 24 });
                 }
             }
         } catch (e) { console.error("Error recortando firma:", e.message); }
-
     }
 
     const bufA = await pdfAnt.save();
@@ -481,21 +455,8 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
         const imgA = await pdf2img.convert(bufA, { width: 1200 });
         const imgR = await pdf2img.convert(bufR, { width: 1200 });
 
-        // --- GUARDAR EN DISCO (VPS) ---
-        const finalPdfBuf = await PDFDocument.create();
-        const [page1] = await finalPdfBuf.copyPages(pdfAnt, [0]);
-        const [page2] = await finalPdfBuf.copyPages(pdfRev, [0]);
-        finalPdfBuf.addPage(page1);
-        finalPdfBuf.addPage(page2);
-        const finalBytes = await finalPdfBuf.save();
-        
-        const fileName = `TIVE-${safe(datos.placa).toUpperCase()}.pdf`;
-        const filePath = path.join(uploadDir, fileName);
-        fs.writeFileSync(filePath, Buffer.from(finalBytes));
-        console.log(`[TIVE] ✅ PDF guardado físicamente en: ${filePath}`);
-
-        // --- NUEVO: RECORTAR UN POQUITO MENOS PARA TELEGRAM ---
-        const cropPx = 35; // Bajado de 58 a 35 (aprox 0.6cm)
+        // ✅ CAMBIO: Eliminado fs.writeFileSync — TIVE ya NO guarda en disco
+        const cropPx = 35;
         
         const recortarParaTelegram = async (bufferImg, extraRight = 0, extraLeft = 0) => {
             const buffer = Buffer.from(bufferImg);
@@ -506,26 +467,20 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
             const right = cropPx + extraRight;
             const bottom = cropPx;
 
-            // Verificamos que el recorte no exceda las dimensiones
             const finalW = metadata.width - left - right;
             const finalH = metadata.height - top - bottom;
             
             if (finalW > 0 && finalH > 0) {
                 return await sharp(buffer)
-                    .extract({ 
-                        left, 
-                        top, 
-                        width: finalW, 
-                        height: finalH 
-                    })
+                    .extract({ left, top, width: finalW, height: finalH })
                     .toBuffer();
             }
-            return buffer; // Si hay error en dimensiones, envía original
+            return buffer;
         };
 
         console.log(`[TIVE] ✂️ Aplicando recorte asimétrico para Telegram...`);
-        const finalImgA = await recortarParaTelegram(imgA[0], 30, 0); // Anverso: 30px extra derecha
-        const finalImgR = await recortarParaTelegram(imgR[0], 25, 25); // Reverso: 25px extra izquierda y derecha
+        const finalImgA = await recortarParaTelegram(imgA[0], 30, 0);
+        const finalImgR = await recortarParaTelegram(imgR[0], 25, 25);
 
         console.log(`[TIVE] 📤 Enviando imágenes PNG al chat ${chatId}...`);
         
@@ -594,8 +549,6 @@ bot.on('document', async (msg) => {
     }
 });
 
-// Los manejadores de callback_query y document ahora están al principio del archivo.
-
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const state = userState.get(chatId);
@@ -619,9 +572,7 @@ bot.on('message', async (msg) => {
         
         bot.sendMessage(chatId, `⏳ Generando PDF con QR para la placa *${plate}*...`, { parse_mode: 'Markdown' });
         try {
-            // Generar hash para que el link funcione
             const hash = crypto.createHash('sha256').update(buffer).digest('hex').toUpperCase();
-
             await finalizarInsercionQR(chatId, buffer, plate, hash);
         } catch (e) {
             bot.sendMessage(chatId, `❌ Error: ${e.message}`);
@@ -644,7 +595,6 @@ bot.on('message', async (msg) => {
         const data = userAntiguaData.get(chatId);
         data.domicilio = domicilio;
         
-        // Esperar a que la IA termine si aún no lo ha hecho
         const checkIA = async () => {
             if (!data.datosIA) {
                 const status = await bot.sendMessage(chatId, "⏳ *Esperando que la IA detecte la fecha...*", { parse_mode: 'Markdown' });
@@ -674,7 +624,6 @@ bot.on('message', async (msg) => {
         
         try {
             const datos = data.datosIA || await extraerConIA_Antigua(buffer);
-            // Sobrescribir con los datos manuales y generados
             datos.controlAnverso = data.controlAnverso;
             datos.controlReverso = data.controlReverso;
             datos.titulo = data.exp;
@@ -701,45 +650,40 @@ async function finalizarInsercionQR(chatId, buffer, placa, hash, messageId = nul
     const { width, height } = page.getSize();
     console.log(`[BOT] 📐 Dimensiones del PDF original: ${width}x${height}`);
     
-    // El QR ahora apunta a la ruta inteligente que gestiona visor nativo (PC) y descarga (Móvil)
-    const qrUrl = `${DOMAIN}/servicio/verCertificado/CERT-${hash}.pdf`;
+    // ✅ CAMBIO: URL sin "CERT-" y sin ".pdf", con ruta /Tive/
+    const qrUrl = `${DOMAIN}/servicio/verCertificado/Tive/${hash}`;
     const qrImg = await pdfDoc.embedPng(await QRCode.toDataURL(qrUrl, { 
         margin: 1,
         color: { dark: '#000000', light: '#ffffff' }
     }));
     
-    // Posición dinámica basada en porcentajes (Original 0bdff6)
     const qrSize = QR_SIZE;
     const posX = (QR_X / 100) * width;
     const posY = height - ((QR_Y / 100) * height) - qrSize;
 
-    console.log(`[BOT] 📍 Pegando QR Original en X:${posX.toFixed(2)}, Y:${posY.toFixed(2)} (Size: ${qrSize})`);
+    console.log(`[BOT] 📍 Pegando QR en X:${posX.toFixed(2)}, Y:${posY.toFixed(2)} (Size: ${qrSize})`);
     
-    page.drawImage(qrImg, { 
-        x: posX, 
-        y: posY, 
-        width: qrSize, 
-        height: qrSize 
-    });
+    page.drawImage(qrImg, { x: posX, y: posY, width: qrSize, height: qrSize });
     
     const pdfBytes = await pdfDoc.save();
     
-    // --- GUARDAR EN DISCO (VPS) ---
-    const finalFileName = `CERT-${hash}.pdf`;
+    // ✅ CAMBIO: Guardado en /servicio/verCertificado/Tive/HASH.pdf
+    const finalFileName = `${hash}.pdf`;
     const finalPath = path.join(uploadDir, finalFileName);
     fs.writeFileSync(finalPath, Buffer.from(pdfBytes));
-    console.log(`[BOT] ✅ Certificado guardado físicamente en: ${finalPath}`);
+    console.log(`[BOT] ✅ Certificado guardado en: ${finalPath}`);
 
-    const fileName = `Certificado-Tive-${hash.replace(/[^a-zA-Z0-9]/g, '').substring(0,8)}.pdf`;
+    const fileName = `Certificado-Tive-${hash.substring(0, 8)}.pdf`;
     
     await bot.sendDocument(chatId, Buffer.from(pdfBytes), { 
         caption: 
             `✨ *¡DOCUMENTO VERIFICADO EXITOSAMENTE!* ✨\n\n` +
             `━━━━━━━━━━━━━━━━━━━━\n` +
             `📂 *Archivo:* \`${placa}\`\n` +
-            `🔐 *Hash de Seguridad:* \n\`${hash.substring(0,32)}\`\n\`${hash.substring(32)}\`\n\n` +
+            `🔐 *Hash de Seguridad:* \n\`${hash.substring(0, 32)}\`\n\`${hash.substring(32)}\`\n\n` +
             `━━━━━━━━━━━━━━━━━━━━\n\n` +
-            `📱 _El código QR ha sido insertado en la parte superior del documento para validación inmediata._`, 
+            `🌐 *Link de verificación:*\n\`${qrUrl}\`\n\n` +
+            `📱 _El código QR ha sido insertado en el documento para validación inmediata._`, 
         parse_mode: 'Markdown' 
     }, { filename: fileName });
     
@@ -748,7 +692,6 @@ async function finalizarInsercionQR(chatId, buffer, placa, hash, messageId = nul
 
 console.log("🤖 Bot TIVE IA Online!");
 
-// Manejo de apagado seguro para evitar Error 409 en Telegram durante los re-deploys
 const gracefulShutdown = () => {
     console.log("🛑 Apagando el bot de forma segura...");
     bot.stopPolling()
@@ -773,4 +716,3 @@ bot.on('polling_error', (err) => {
         console.error("❌ Error de polling:", err.message);
     }
 });
-
