@@ -86,7 +86,6 @@ bot.on('callback_query', async (query) => {
 
         bot.editMessageText(
             `📜 *Generación de Tarjeta Antigua*\n\n` +
-            `🔢 Control Anv: \`${n1}\` | Rev: \`${n2}\` | EXP: \`${exp}\` (Aleatorios ✨)\n\n` +
             `Introduce la **PLACA** con su guion (ej: \`5053-QS\`):`,
             { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' }
         );
@@ -657,6 +656,7 @@ bot.on('message', async (msg) => {
             datos.zona = data.zona;
             datos.sede = data.sede;
             datos.reparticion = data.reparticion;
+            if (data.placa) datos.placa = fmtPlaca(data.placa);
             if (data.clase) datos.clase = data.clase;
             if (data.placaSede) datos.placaSede = data.placaSede;
             if (data.sedeDomicilio) datos.sedeDomicilio = data.sedeDomicilio;

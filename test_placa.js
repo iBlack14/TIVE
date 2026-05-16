@@ -12,6 +12,16 @@ const rl = readline.createInterface({
 
 const question = (query) => new Promise((resolve) => rl.question(query, resolve));
 
+const fmtPlaca = (p) => {
+    if (!p) return "";
+    let clean = p.replace(/[^A-Z0-9]/gi, "").toUpperCase();
+    if (clean.length === 6) {
+        if (/^\d{4}/.test(clean)) return `${clean.substring(0, 4)}-${clean.substring(4)}`;
+        return `${clean.substring(0, 3)}-${clean.substring(3)}`;
+    }
+    return clean;
+};
+
 async function procesarPlaca() {
     console.log("📂 Cargando archivos...");
     const plantillaBuffer = fs.readFileSync(path.join(__dirname, 'tarjeta', 'placaplantilla.pdf'));
@@ -30,7 +40,7 @@ async function procesarPlaca() {
         "zona": "III",
         "sede": "TARAPOTO",
         "reparticion": "TARAPOTO",
-        "placa": placaInput || "5053-QS",
+        "placa": fmtPlaca(placaInput || "5053-QS"),
         "placaSede": placaSedeInput || "",
         "exp": "30184",
         "ins": "15/11/2006",
@@ -90,15 +100,7 @@ async function procesarPlaca() {
         page.drawText(txt, { x: x + 0.2, y: height - y, size, font: customFont, color });
     };
 
-    const fmtPlaca = (p) => {
-        if (!p) return "";
-        let clean = p.replace(/[^A-Z0-9]/gi, "").toUpperCase();
-        if (clean.length === 6) {
-            if (/^\d{4}/.test(clean)) return `${clean.substring(0, 4)}-${clean.substring(4)}`;
-            return `${clean.substring(0, 3)}-${clean.substring(3)}`;
-        }
-        return clean;
-    };
+
 
     const drawTec = (text, x, y, size = 11) => {
         if (!text) return;
