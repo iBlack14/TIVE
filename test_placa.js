@@ -138,7 +138,7 @@ async function procesarPlaca() {
     drawSeg(datos.fechaPropiedad, 126, 296, 10, 11, 9.5);
 
     // Ajuste de espacios para Emisión (15px y 14px)
-    drawSeg(`${datos.fechaInferior}  ( INS )`, 218, 364, 15, 14, 10.5, gris);
+    drawSeg(datos.fechaInferior, 210, 365, 15, 14, 10.5, gris);
 
     // --- RENDERIZADO REVERSO ---
     // draw(datos.controlReverso, 480, 118, 19, rgb(0.8, 0.1, 0.1), fontFina);

@@ -293,7 +293,7 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     draw(datos.domicilio, 68, 283, 7.2);
     draw(datos.sedeDomicilio, 105, 269, 7.5);
     drawSeg(datos.fechaPropiedad, 126, 296, 10, 11, 9.5);
-    drawSeg(`${datos.fechaInferior}  ( INS )`, 218, 364, 15, 14, 10.5, gris);
+    drawSeg(datos.fechaInferior, 210, 365, 15, 14, 10.5, gris);
 
     const drawTec = (text, x, y, size = 11) => {
         if (!text) return;
