@@ -278,6 +278,7 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     draw(datos.zona, 269, 139, 8);
     draw(datos.sede, 225, 147.6, 7);
     draw(datos.reparticion, 169, 164, 7);
+    draw(datos.placaSede, 90, 176, 7); // Placa Sede arriba y a la derecha
     draw(fmtPlaca(datos.placa), 80, 195, 18);
     // draw(datos.titulo, 202, 178, 9);
     drawSeg(datos.partida, 233, 195, 11, 10, 8); 
@@ -288,6 +289,7 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     draw(datos.nombres, 105, 257, 7);
     draw(datos.nombres2, 185, 258, 7);
     draw(datos.domicilio, 68, 283, 6);
+    draw(datos.sedeDomicilio, 105, 269, 6);
     drawSeg(datos.fechaPropiedad, 126, 296, 10, 11, 8.5);
     drawSeg(datos.fechaInferior, 218, 364, 15, 14, 9, gris);
 
@@ -583,6 +585,10 @@ bot.on('message', async (msg) => {
         }
     } else if (state === "awaiting_antigua_clase" && msg.text) {
         userAntiguaData.get(chatId).clase = msg.text.trim().toUpperCase();
+        userState.set(chatId, "awaiting_antigua_placa_sede");
+        bot.sendMessage(chatId, "📍 Introduce la **PLACA SEDE** (ej: TARAPOTO):", { parse_mode: 'Markdown' });
+    } else if (state === "awaiting_antigua_placa_sede" && msg.text) {
+        userAntiguaData.get(chatId).placaSede = msg.text.trim().toUpperCase();
         userState.set(chatId, "awaiting_antigua_zona");
         bot.sendMessage(chatId, "🌏 Introduce la **ZONA** (ej: III):", { parse_mode: 'Markdown' });
     } else if (state === "awaiting_antigua_zona" && msg.text) {
@@ -595,6 +601,10 @@ bot.on('message', async (msg) => {
         bot.sendMessage(chatId, "📂 Introduce la **REPARTICIÓN** (ej: YURIMAGUAS):", { parse_mode: 'Markdown' });
     } else if (state === "awaiting_antigua_reparticion" && msg.text) {
         userAntiguaData.get(chatId).reparticion = msg.text.trim().toUpperCase();
+        userState.set(chatId, "awaiting_antigua_sede_domicilio");
+        bot.sendMessage(chatId, "📍 Introduce la **SEDE DOMICILIO** (ej: YURIMAGUAS):", { parse_mode: 'Markdown' });
+    } else if (state === "awaiting_antigua_sede_domicilio" && msg.text) {
+        userAntiguaData.get(chatId).sedeDomicilio = msg.text.trim().toUpperCase();
         userState.set(chatId, "awaiting_antigua_domicilio");
         bot.sendMessage(chatId, "🏠 Introduce la **DIRECCIÓN (DOMICILIO)** (o /skip):", { parse_mode: 'Markdown' });
     } else if (state === "awaiting_antigua_domicilio" && msg.text) {
@@ -642,6 +652,8 @@ bot.on('message', async (msg) => {
             datos.sede = data.sede;
             datos.reparticion = data.reparticion;
             if (data.clase) datos.clase = data.clase;
+            if (data.placaSede) datos.placaSede = data.placaSede;
+            if (data.sedeDomicilio) datos.sedeDomicilio = data.sedeDomicilio;
             if (data.domicilio) datos.domicilio = data.domicilio;
             
             await generarTarjetaAntigua(chatId, datos, buffer);

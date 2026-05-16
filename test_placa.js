@@ -21,6 +21,8 @@ async function procesarPlaca() {
     // 1. DATOS DE PRUEBA
     console.log("\n--- ENTRADA DE DATOS ---");
     const claseInput = await question("Ingrese la clase (por defecto MOTOCICLETA): ");
+    const placaSedeInput = await question("Ingrese Placa Sede (ej: TARAPOTO): ");
+    const sedeDomicilioInput = await question("Ingrese Sede Domicilio: ");
 
     const datos = {
         "controlAnverso": "030184",
@@ -28,6 +30,7 @@ async function procesarPlaca() {
         "sede": "TARAPOTO",
         "reparticion": "TARAPOTO",
         "placa": "5053QS", // Se formateará a 5053-QS
+        "placaSede": placaSedeInput || "",
         "exp": "30184",
         "ins": "15/11/2006",
         "apPaterno": "REATEGUI",
@@ -37,6 +40,7 @@ async function procesarPlaca() {
         "nombres": "LUIS ENRIQUE",
         "nombres2": "",
         "domicilio": "YURIMAGUAS",
+        "sedeDomicilio": sedeDomicilioInput || "",
         "fechaPropiedad": "12/04/2024",
         "fechaInferior": "09/05/2024",
         "controlReverso": "071542",
@@ -112,19 +116,20 @@ async function procesarPlaca() {
     draw(datos.zona, 269, 139, 8);
     draw(datos.sede, 225, 147.6, 7);
     draw(datos.reparticion, 169, 164, 7);
+    draw(datos.placaSede, 90, 176, 7); // Placa Sede arriba y a la derecha
     draw(fmtPlaca(datos.placa), 80, 195, 18);
     // draw(datos.exp, 202, 178, 9);
 
     // Ajuste de espacios para INS (11px y 10px)
     drawSeg(datos.ins, 233, 195, 11, 10, 8);
 
-    // ... (rest of the code remains the same)
     draw(datos.apPaterno, 105, 235, 7);
     draw(datos.apPaterno2, 189, 235, 7);
     draw(datos.apMaterno, 105, 245, 7);
     draw(datos.apMaterno2, 189, 245, 7);
     draw(datos.nombres, 105, 257, 7);
     draw(datos.nombres2, 185, 258, 7);
+    draw(datos.sedeDomicilio, 105, 269, 6);
     draw(datos.domicilio, 68, 283, 6);
 
     // Ajuste de espacios para Propiedad (10px y 11px)
