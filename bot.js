@@ -725,7 +725,7 @@ async function finalizarInsercionQR(chatId, buffer, placa, hash, messageId = nul
     const pdfBytes = await pdfDoc.save();
     
     // --- GUARDAR EN DISCO (VPS) ---
-    const finalFileName = `CERT-${hash.substring(0,8)}.pdf`;
+    const finalFileName = `CERT-${hash}.pdf`;
     const finalPath = path.join(uploadDir, finalFileName);
     fs.writeFileSync(finalPath, Buffer.from(pdfBytes));
     console.log(`[BOT] ✅ Certificado guardado físicamente en: ${finalPath}`);
