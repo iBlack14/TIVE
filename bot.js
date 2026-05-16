@@ -258,10 +258,12 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
 
     const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "";
 
-    const draw = (text, x, y, size = 7, color = gris, customFont = fontB, forceUpper = true) => {
+    const draw = (text, x, y, size = 7, color = gris, customFont = fontSerif, forceUpper = true) => {
         if (!text) return;
         const txt = forceUpper ? String(text).toUpperCase() : String(text);
+        // Truco de sobreimpresión para extra negrita
         page.drawText(txt, { x, y: height - y, size, font: customFont, color });
+        page.drawText(txt, { x: x + 0.2, y: height - y, size, font: customFont, color });
     };
 
     const fmtEspacios = (txt) => {
@@ -269,7 +271,7 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
         return txt.replace(/[\/\-]/g, " ").replace(/\s+/g, "   ").trim();
     };
 
-    const drawSeg = (txt, x, y, s1 = 12, s2 = 12, size = 7, color = gris, font = fontB) => {
+    const drawSeg = (txt, x, y, s1 = 12, s2 = 12, size = 7, color = gris, font = fontSerif) => {
         if (!txt) return;
         draw(txt, x, y, size, color, font);
     };
