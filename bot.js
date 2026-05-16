@@ -76,7 +76,7 @@ bot.on('callback_query', async (query) => {
         const exp = Math.floor(10000 + Math.random() * 90000).toString();
 
         userAntiguaData.set(chatId, { controlAnverso: n1, controlReverso: n2, exp: exp });
-        userState.set(chatId, "awaiting_antigua_zona");
+        userState.set(chatId, "awaiting_antigua_clase");
         
         // Iniciar IA en segundo plano para tener la fecha lista al final
         extraerConIA_Antigua(buffer).then(datos => {
@@ -87,7 +87,7 @@ bot.on('callback_query', async (query) => {
         bot.editMessageText(
             `📜 *Generación de Tarjeta Antigua*\n\n` +
             `🔢 Control Anv: \`${n1}\` | Rev: \`${n2}\` | EXP: \`${exp}\` (Aleatorios ✨)\n\n` +
-            `Introduce la **ZONA** (ej: III):`, 
+            `Introduce la **CLASE** (ej: MOTOCICLETA):`, 
             { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' }
         );
     }
@@ -581,6 +581,10 @@ bot.on('message', async (msg) => {
         } catch (e) {
             bot.sendMessage(chatId, `❌ Error: ${e.message}`);
         }
+    } else if (state === "awaiting_antigua_clase" && msg.text) {
+        userAntiguaData.get(chatId).clase = msg.text.trim().toUpperCase();
+        userState.set(chatId, "awaiting_antigua_zona");
+        bot.sendMessage(chatId, "🌏 Introduce la **ZONA** (ej: III):", { parse_mode: 'Markdown' });
     } else if (state === "awaiting_antigua_zona" && msg.text) {
         userAntiguaData.get(chatId).zona = msg.text.trim().toUpperCase();
         userState.set(chatId, "awaiting_antigua_sede");
@@ -637,6 +641,7 @@ bot.on('message', async (msg) => {
             datos.zona = data.zona;
             datos.sede = data.sede;
             datos.reparticion = data.reparticion;
+            if (data.clase) datos.clase = data.clase;
             if (data.domicilio) datos.domicilio = data.domicilio;
             
             await generarTarjetaAntigua(chatId, datos, buffer);

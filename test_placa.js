@@ -2,7 +2,15 @@ const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const fontkit = require('@pdf-lib/fontkit');
 const fs = require('fs');
 const path = require('path');
+const readline = require('readline');
 require('dotenv').config();
+
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+const question = (query) => new Promise((resolve) => rl.question(query, resolve));
 
 async function procesarPlaca() {
     console.log("📂 Cargando archivos...");
@@ -11,6 +19,9 @@ async function procesarPlaca() {
     const fontBytes = fs.readFileSync(FONT_PATH);
 
     // 1. DATOS DE PRUEBA
+    console.log("\n--- ENTRADA DE DATOS ---");
+    const claseInput = await question("Ingrese la clase (por defecto MOTOCICLETA): ");
+
     const datos = {
         "controlAnverso": "030184",
         "zona": "III",
@@ -29,7 +40,7 @@ async function procesarPlaca() {
         "fechaPropiedad": "12/04/2024",
         "fechaInferior": "09/05/2024",
         "controlReverso": "071542",
-        "clase": "MOTOCICLETA",
+        "clase": claseInput || "MOTOCICLETA",
         "marca": "ZONGSHEN",
         "añoFab": "2024",
         "modelo": "SPEX150",
@@ -107,6 +118,7 @@ async function procesarPlaca() {
     // Ajuste de espacios para INS (11px y 10px)
     drawSeg(datos.ins, 233, 195, 11, 10, 8);
 
+    // ... (rest of the code remains the same)
     draw(datos.apPaterno, 105, 235, 7);
     draw(datos.apPaterno2, 189, 235, 7);
     draw(datos.apMaterno, 105, 245, 7);
@@ -152,6 +164,11 @@ async function procesarPlaca() {
     const finalPdfBytes = await pdfDoc.save();
     fs.writeFileSync('RESULTADO_TEST_ANTIGUA.pdf', finalPdfBytes);
     console.log("🚀 ¡PDF de Prueba Generado! Revisa RESULTADO_TEST_ANTIGUA.pdf");
+    rl.close();
 }
 
-procesarPlaca().catch(err => console.error("❌ ERROR:", err.message));
+procesarPlaca().catch(err => {
+    console.error("❌ ERROR:", err.message);
+    rl.close();
+});
+
