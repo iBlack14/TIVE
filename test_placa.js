@@ -20,16 +20,17 @@ async function procesarPlaca() {
 
     // 1. DATOS DE PRUEBA
     console.log("\n--- ENTRADA DE DATOS ---");
-    const claseInput = await question("Ingrese la clase (por defecto MOTOCICLETA): ");
-    const placaSedeInput = await question("Ingrese Placa Sede (ej: TARAPOTO): ");
-    const sedeDomicilioInput = await question("Ingrese Sede Domicilio: ");
+    const placaInput = await question("🔢 Ingrese la PLACA (ej: 5053-QS): ");
+    const claseInput = await question("🛵 Ingrese la clase (por defecto MOTOCICLETA): ");
+    const placaSedeInput = await question("📍 Ingrese Placa Sede (ej: TARAPOTO): ");
+    const sedeDomicilioInput = await question("🏠 Ingrese Sede Domicilio: ");
 
     const datos = {
         "controlAnverso": "030184",
         "zona": "III",
         "sede": "TARAPOTO",
         "reparticion": "TARAPOTO",
-        "placa": "5053QS", // Se formateará a 5053-QS
+        "placa": placaInput || "5053-QS", 
         "placaSede": placaSedeInput || "",
         "exp": "30184",
         "ins": "15/11/2006",
@@ -119,7 +120,7 @@ async function procesarPlaca() {
     draw(datos.sede, 225, 147.6, 8);
     draw(datos.reparticion, 169, 164, 8);
     draw(datos.placaSede, 90, 176, 8.5); // Placa Sede arriba y a la derecha
-    draw(fmtPlaca(datos.placa), 80, 195, 18.5);
+    draw(datos.placa, 80, 195, 18.5); // Dibujar placa tal cual se ingresó
     // draw(datos.exp, 202, 178, 9);
 
     // Ajuste de espacios para INS (11px y 10px)

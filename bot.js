@@ -76,9 +76,9 @@ bot.on('callback_query', async (query) => {
         const exp = Math.floor(10000 + Math.random() * 90000).toString();
 
         userAntiguaData.set(chatId, { controlAnverso: n1, controlReverso: n2, exp: exp });
-        userState.set(chatId, "awaiting_antigua_clase");
+        userState.set(chatId, "awaiting_antigua_placa");
         
-        // Iniciar IA en segundo plano para tener la fecha lista al final
+        // Iniciar IA en segundo plano
         extraerConIA_Antigua(buffer).then(datos => {
             const current = userAntiguaData.get(chatId);
             if (current) current.datosIA = datos;
@@ -87,7 +87,7 @@ bot.on('callback_query', async (query) => {
         bot.editMessageText(
             `📜 *Generación de Tarjeta Antigua*\n\n` +
             `🔢 Control Anv: \`${n1}\` | Rev: \`${n2}\` | EXP: \`${exp}\` (Aleatorios ✨)\n\n` +
-            `Introduce la **CLASE** (ej: MOTOCICLETA):`, 
+            `Introduce la **PLACA** con su guion (ej: \`5053-QS\`):`, 
             { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' }
         );
     }
@@ -281,7 +281,7 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     draw(datos.sede, 225, 147.6, 8);
     draw(datos.reparticion, 169, 164, 8);
     draw(datos.placaSede, 90, 176, 8.5); // Placa Sede
-    draw(fmtPlaca(datos.placa), 80, 195, 18.5);
+    draw(datos.placa, 80, 195, 18.5);
     // draw(datos.titulo, 202, 178, 9);
     drawSeg(datos.partida, 233, 195, 11, 10, 8); 
     draw(datos.apPaterno, 105, 235, 8);
@@ -585,6 +585,10 @@ bot.on('message', async (msg) => {
         } catch (e) {
             bot.sendMessage(chatId, `❌ Error: ${e.message}`);
         }
+    } else if (state === "awaiting_antigua_placa" && msg.text) {
+        userAntiguaData.get(chatId).placa = msg.text.trim().toUpperCase();
+        userState.set(chatId, "awaiting_antigua_clase");
+        bot.sendMessage(chatId, "🛵 Introduce la **CLASE** (ej: MOTOCICLETA):", { parse_mode: 'Markdown' });
     } else if (state === "awaiting_antigua_clase" && msg.text) {
         userAntiguaData.get(chatId).clase = msg.text.trim().toUpperCase();
         userState.set(chatId, "awaiting_antigua_placa_sede");
