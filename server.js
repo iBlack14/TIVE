@@ -7,7 +7,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Ruta donde se guardarán los PDFs (desde el bot)
-const uploadDir = path.join(__dirname, 'servicio', 'verCertificado');
+// ✅ Después
+const uploadDir = path.join(__dirname, 'servicio', 'verCertificado', 'Tive');
 
 // Crear carpeta si no existe
 if (!fs.existsSync(uploadDir)) {
