@@ -265,21 +265,17 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
         return txt.replace(/[\/\-]/g, " ").replace(/\s+/g, "   ").trim();
     };
 
-    const drawSeg = (txt, x, y, s1 = 12, s2 = 12, size = 7, color = gris, font = fontSerifNorm) => {
+    const drawSeg = (txt, x, y, s1 = 12, s2 = 12, size = 7, color = gris, font = fontSerif) => {
         if (!txt) return;
-        const p = String(txt).split(/[\/\-]/);
-        if (p.length !== 3) return draw(txt, x, y, size, color, font);
-        draw(p[0], x, y, size, color, font);
-        draw(p[1], x + s1, y, size, color, font);
-        draw(p[2], x + s1 + s2, y, size, color, font);
+        draw(txt, x, y, size, color, font);
     };
 
-    draw(datos.controlAnverso, 220, 120, 19, rgb(0.8, 0.1, 0.1), fontFina);
+    // draw(datos.controlAnverso, 220, 120, 19, rgb(0.8, 0.1, 0.1), fontFina);
     draw(datos.zona, 269, 139, 8);
     draw(datos.sede, 225, 147.6, 7);
     draw(datos.reparticion, 169, 164, 7);
     draw(fmtPlaca(datos.placa), 80, 195, 18);
-    draw(datos.titulo, 202, 178, 9);
+    // draw(datos.titulo, 202, 178, 9);
     drawSeg(datos.partida, 233, 195, 11, 10, 8); 
     draw(datos.apPaterno, 105, 235, 7);
     draw(datos.apPaterno2, 189, 235, 7);
@@ -288,8 +284,8 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     draw(datos.nombres, 105, 257, 7);
     draw(datos.nombres2, 185, 258, 7);
     draw(datos.domicilio, 68, 283, 6);
-    drawSeg(datos.fechaPropiedad, 121, 296, 10, 11, 7);
-    drawSeg(datos.fechaInferior, 218, 364, 15, 14, 9, gris, fontSerifNorm);
+    drawSeg(datos.fechaPropiedad, 126, 296, 10, 11, 8.5);
+    drawSeg(datos.fechaInferior, 218, 364, 15, 14, 9, gris);
 
     const drawTec = (text, x, y, size = 11) => {
         if (!text) return;
@@ -300,7 +296,7 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
         draw(text, finalX, y, size);
     };
 
-    draw(datos.controlReverso, 480, 118, 19, rgb(0.8, 0.1, 0.1), fontFina);
+    // draw(datos.controlReverso, 480, 118, 19, rgb(0.8, 0.1, 0.1), fontFina);
     draw(datos.clase, 325, 149, 10);
     draw(datos.marca, 435, 149, 11);
     draw(datos.añoFab, 510, 145, 11);

@@ -87,22 +87,18 @@ async function procesarPlaca() {
         draw(text, finalX, y, size);
     };
 
-    const drawSeg = (txt, x, y, s1 = 12, s2 = 12, size = 7, color = gris, font = fontSerifNorm) => {
+    const drawSeg = (txt, x, y, s1 = 12, s2 = 12, size = 7, color = gris, font = fontSerif) => {
         if (!txt) return;
-        const p = String(txt).split(/[\/\-]/);
-        if (p.length !== 3) return draw(txt, x, y, size, color, font);
-        draw(p[0], x, y, size, color, font);
-        draw(p[1], x + s1, y, size, color, font);
-        draw(p[2], x + s1 + s2, y, size, color, font);
+        draw(txt, x, y, size, color, font);
     };
 
     // --- RENDERIZADO ANVERSO ---
-    draw(datos.controlAnverso, 220, 120, 19, rgb(0.8, 0.1, 0.1), fontFina);
+    // draw(datos.controlAnverso, 220, 120, 19, rgb(0.8, 0.1, 0.1), fontFina);
     draw(datos.zona, 269, 139, 8);
     draw(datos.sede, 225, 147.6, 7);
     draw(datos.reparticion, 169, 164, 7);
     draw(fmtPlaca(datos.placa), 80, 195, 18);
-    draw(datos.exp, 202, 178, 9);
+    // draw(datos.exp, 202, 178, 9);
     
     // Ajuste de espacios para INS (11px y 10px)
     drawSeg(datos.ins, 233, 195, 11, 10, 8); 
@@ -116,13 +112,13 @@ async function procesarPlaca() {
     draw(datos.domicilio, 68, 283, 6);
     
     // Ajuste de espacios para Propiedad (10px y 11px)
-    drawSeg(datos.fechaPropiedad, 121, 296, 10, 11, 7);
+    drawSeg(datos.fechaPropiedad, 126, 296, 10, 11, 8.5);
     
     // Ajuste de espacios para Emisión (15px y 14px)
-    drawSeg(datos.fechaInferior, 218, 364, 15, 14, 9, gris, fontSerifNorm);
+    drawSeg(datos.fechaInferior, 218, 364, 15, 14, 9, gris);
 
     // --- RENDERIZADO REVERSO ---
-    draw(datos.controlReverso, 480, 118, 19, rgb(0.8, 0.1, 0.1), fontFina);
+    // draw(datos.controlReverso, 480, 118, 19, rgb(0.8, 0.1, 0.1), fontFina);
     draw(datos.clase, 325, 149, 10);
     draw(datos.marca, 435, 149, 11);
     draw(datos.añoFab, 510, 145, 11);
