@@ -250,14 +250,18 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     const fontSerif = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
     const fontSerifNorm = await pdfDoc.embedFont(StandardFonts.TimesRoman);
     const fontFina = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontArialBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     
     const page = pdfDoc.getPages()[0];
     const { height } = page.getSize();
     const gris = rgb(0.2, 0.2, 0.2);
 
-    const draw = (text, x, y, size = 7, color = gris, customFont = fontSerif) => {
+    const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "";
+
+    const draw = (text, x, y, size = 7, color = gris, customFont = fontSerif, forceUpper = true) => {
         if (!text) return;
-        page.drawText(String(text).toUpperCase(), { x, y: height - y, size, font: customFont, color });
+        const txt = forceUpper ? String(text).toUpperCase() : String(text);
+        page.drawText(txt, { x, y: height - y, size, font: customFont, color });
     };
 
     const fmtEspacios = (txt) => {
@@ -317,6 +321,10 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     drawTec(datos.altura, 385, 319, 11);
     drawTec(datos.ancho, 447, 319, 11);
     drawTec(datos.cargaUtil, 500, 319, 11);
+
+    // Bloque de Firma (Reverso)
+    draw(datos.zona, 435, 357.5, 4.3, gris, fontArialBold);
+    draw(capitalize(datos.sede), 455, 357.5, 4.3, gris, fontArialBold, false);
 
     const pdfBytes = await pdfDoc.save();
 

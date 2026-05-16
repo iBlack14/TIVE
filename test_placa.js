@@ -58,14 +58,18 @@ async function procesarPlaca() {
     const fontSerif = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
     const fontSerifNorm = await pdfDoc.embedFont(StandardFonts.TimesRoman);
     const fontFina = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontArialBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const page = pdfDoc.getPages()[0];
     const { height } = page.getSize();
     const gris = rgb(0.2, 0.2, 0.2);
 
     // Helpers de Dibujo
-    const draw = (text, x, y, size = 7, color = gris, customFont = fontSerif) => {
+    const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "";
+
+    const draw = (text, x, y, size = 7, color = gris, customFont = fontSerif, forceUpper = true) => {
         if (!text) return;
-        page.drawText(String(text).toUpperCase(), { x, y: height - y, size, font: customFont, color });
+        const txt = forceUpper ? String(text).toUpperCase() : String(text);
+        page.drawText(txt, { x, y: height - y, size, font: customFont, color });
     };
 
     const fmtPlaca = (p) => {
@@ -99,9 +103,9 @@ async function procesarPlaca() {
     draw(datos.reparticion, 169, 164, 7);
     draw(fmtPlaca(datos.placa), 80, 195, 18);
     // draw(datos.exp, 202, 178, 9);
-    
+
     // Ajuste de espacios para INS (11px y 10px)
-    drawSeg(datos.ins, 233, 195, 11, 10, 8); 
+    drawSeg(datos.ins, 233, 195, 11, 10, 8);
 
     draw(datos.apPaterno, 105, 235, 7);
     draw(datos.apPaterno2, 189, 235, 7);
@@ -110,10 +114,10 @@ async function procesarPlaca() {
     draw(datos.nombres, 105, 257, 7);
     draw(datos.nombres2, 185, 258, 7);
     draw(datos.domicilio, 68, 283, 6);
-    
+
     // Ajuste de espacios para Propiedad (10px y 11px)
     drawSeg(datos.fechaPropiedad, 126, 296, 10, 11, 8.5);
-    
+
     // Ajuste de espacios para Emisión (15px y 14px)
     drawSeg(datos.fechaInferior, 218, 364, 15, 14, 9, gris);
 
@@ -139,6 +143,10 @@ async function procesarPlaca() {
     drawTec(datos.altura, 385, 319, 11);
     drawTec(datos.ancho, 447, 319, 11);
     drawTec(datos.cargaUtil, 500, 319, 11);
+
+    // Bloque de Firma (Reverso)
+    draw(datos.zona, 435, 357.5, 4.3, gris, fontArialBold);
+    draw(capitalize(datos.sede), 455, 357.5, 4.3, gris, fontArialBold, false);
 
     // 3. GUARDAR
     const finalPdfBytes = await pdfDoc.save();
