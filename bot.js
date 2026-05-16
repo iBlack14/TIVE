@@ -547,7 +547,7 @@ bot.on('document', async (msg) => {
             parse_mode: 'Markdown',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: "🚀 Generar TIVE", callback_data: "ask_qr" }],
+                    [{ text: "🚀 Generar Fotos TIVE PVC", callback_data: "ask_qr" }],
                     [{ text: "📜 Generar Tarjeta Antigua", callback_data: "gen_antigua" }],
                     [{ text: "🔐 Insertar QR en PDF Original", callback_data: "insert_qr_only" }]
                 ]
