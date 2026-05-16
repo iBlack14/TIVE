@@ -30,7 +30,7 @@ async function procesarPlaca() {
         "zona": "III",
         "sede": "TARAPOTO",
         "reparticion": "TARAPOTO",
-        "placa": placaInput || "5053-QS", 
+        "placa": placaInput || "5053-QS",
         "placaSede": placaSedeInput || "",
         "exp": "30184",
         "ins": "15/11/2006",
@@ -165,7 +165,7 @@ async function procesarPlaca() {
     drawTec(datos.cargaUtil, 500, 319, 11);
 
     // Bloque de Firma (Reverso)
-    draw(datos.zona, 435, 357.5, 4.3, gris, fontArialBold);
+    draw(datos.zona, 436, 357.5, 4.3, gris, fontArialBold);
     draw(capitalize(datos.sede), 455, 357.5, 4.3, gris, fontArialBold, false);
 
     // 3. GUARDAR

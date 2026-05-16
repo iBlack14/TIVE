@@ -25,7 +25,7 @@ const DOMAIN_URL = process.env.DOMAIN_URL || 'http://localhost:3000';
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
 // Limpieza inicial silenciosa
-bot.deleteWebHook({ drop_pending_updates: true }).catch(() => {});
+bot.deleteWebHook({ drop_pending_updates: true }).catch(() => { });
 
 // 1. Comando de prueba
 bot.onText(/\/ping/, (msg) => {
@@ -39,9 +39,9 @@ bot.on('callback_query', async (query) => {
     const data = query.data;
 
     console.log(`[BOT] 🖱️ Botón presionado: ${data} en chat ${chatId}`);
-    
+
     // Quitar reloj de carga
-    bot.answerCallbackQuery(query.id).catch(() => {});
+    bot.answerCallbackQuery(query.id).catch(() => { });
 
     const buffer = userPdfs.get(chatId);
     if (!buffer) {
@@ -77,7 +77,7 @@ bot.on('callback_query', async (query) => {
 
         userAntiguaData.set(chatId, { controlAnverso: n1, controlReverso: n2, exp: exp });
         userState.set(chatId, "awaiting_antigua_placa");
-        
+
         // Iniciar IA en segundo plano
         extraerConIA_Antigua(buffer).then(datos => {
             const current = userAntiguaData.get(chatId);
@@ -87,7 +87,7 @@ bot.on('callback_query', async (query) => {
         bot.editMessageText(
             `📜 *Generación de Tarjeta Antigua*\n\n` +
             `🔢 Control Anv: \`${n1}\` | Rev: \`${n2}\` | EXP: \`${exp}\` (Aleatorios ✨)\n\n` +
-            `Introduce la **PLACA** con su guion (ej: \`5053-QS\`):`, 
+            `Introduce la **PLACA** con su guion (ej: \`5053-QS\`):`,
             { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' }
         );
     }
@@ -202,7 +202,7 @@ async function extraerConIA(pdfBuffer) {
 async function extraerConIA_Antigua(pdfBuffer) {
     console.log(`[IA-ANTIGUA] 🧠 Iniciando extracción de documento antiguo...`);
     if (API_KEYS.length === 0) throw new Error("Llaves API no configuradas.");
-    
+
     for (const key of API_KEYS) {
         try {
             const genAI = new GoogleGenerativeAI(key);
@@ -240,18 +240,18 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     console.log(`[ANTIGUA] 🎨 Generando tarjeta para: ${datos.placa}`);
     const templatePath = getTemplatePath('placaplantilla.pdf');
     const pdfDoc = await PDFDocument.load(fs.readFileSync(templatePath));
-    
+
     pdfDoc.setTitle(`CERTIFICADO DE IDENTIFICACIÓN VEHICULAR - ${datos.placa}`);
     pdfDoc.setAuthor('SUNARP - Sistema TIVE');
-    
+
     pdfDoc.registerFontkit(fontkit);
-    
+
     const fontB = await pdfDoc.embedFont(FONT_BYTES);
     const fontSerif = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
     const fontSerifNorm = await pdfDoc.embedFont(StandardFonts.TimesRoman);
     const fontFina = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const fontArialBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-    
+
     const page = pdfDoc.getPages()[0];
     const { height } = page.getSize();
     const gris = rgb(0.2, 0.2, 0.2);
@@ -283,7 +283,7 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     draw(datos.placaSede, 90, 176, 8.5); // Placa Sede
     draw(datos.placa, 80, 195, 18.5);
     // draw(datos.titulo, 202, 178, 9);
-    drawSeg(datos.partida, 233, 195, 11, 10, 8); 
+    drawSeg(datos.partida, 233, 195, 11, 10, 8);
     draw(datos.apPaterno, 105, 235, 8);
     draw(datos.apPaterno2, 189, 235, 8);
     draw(datos.apMaterno, 105, 245, 8);
@@ -327,7 +327,7 @@ async function generarTarjetaAntigua(chatId, datos, originalBuffer = null) {
     drawTec(datos.cargaUtil, 500, 319, 11);
 
     // Bloque de Firma (Reverso)
-    draw(datos.zona, 435, 357.5, 4.3, gris, fontArialBold);
+    draw(datos.zona, 436, 357.5, 4.3, gris, fontArialBold);
     draw(capitalize(datos.sede), 455, 357.5, 4.3, gris, fontArialBold, false);
 
     const pdfBytes = await pdfDoc.save();
@@ -408,7 +408,7 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
     dR(datos.cilindrada, 203, 121); dR(datos.pBruto, 203, 127.8);
     dR(datos.pNeto, 203, 134.6); dR(datos.cargaUtil, 203, 142);
 
-    const barText = 
+    const barText =
         `📋 FICHA TÉCNICA TIVE\n` +
         `━━━━━━━━━━━━━━━━━\n` +
         `🚗 PLACA: ${safe(datos.placa)}\n` +
@@ -465,11 +465,11 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
 
         // ✅ CAMBIO: Eliminado fs.writeFileSync — TIVE ya NO guarda en disco
         const cropPx = 35;
-        
+
         const recortarParaTelegram = async (bufferImg, extraRight = 0, extraLeft = 0) => {
             const buffer = Buffer.from(bufferImg);
             const metadata = await sharp(buffer).metadata();
-            
+
             const left = cropPx + extraLeft;
             const top = cropPx;
             const right = cropPx + extraRight;
@@ -477,7 +477,7 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
 
             const finalW = metadata.width - left - right;
             const finalH = metadata.height - top - bottom;
-            
+
             if (finalW > 0 && finalH > 0) {
                 return await sharp(buffer)
                     .extract({ left, top, width: finalW, height: finalH })
@@ -491,10 +491,10 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
         const finalImgR = await recortarParaTelegram(imgR[0], 25, 25);
 
         console.log(`[TIVE] 📤 Enviando imágenes PNG al chat ${chatId}...`);
-        
+
         await bot.sendPhoto(chatId, finalImgA, { caption: `✅ Anverso (Recortado)` }, { filename: 'anverso.png', contentType: 'image/png' });
         await bot.sendPhoto(chatId, finalImgR, { caption: `✅ Reverso (Recortado)` }, { filename: 'reverso.png', contentType: 'image/png' });
-        
+
         console.log(`[TIVE] ✅ Imágenes y mensaje enviados exitosamente.`);
     } catch (e) {
         console.error(`[TIVE] ❌ Error enviando fotos:`, e.message);
@@ -566,18 +566,18 @@ bot.on('message', async (msg) => {
         const customLink = msg.text;
         userState.delete(chatId);
         bot.sendMessage(chatId, `🧠 Procesando con IA...`);
-        try { 
+        try {
             const datos = await extraerConIA(buffer);
             if (!datos.placa) bot.sendMessage(chatId, "⚠️ Advertencia: No se detectó placa.");
             await generarTIVE(chatId, datos, customLink, buffer);
-        } catch (e) { 
+        } catch (e) {
             console.error(`[BOT] ❌ Error en flujo custom:`, e);
-            bot.sendMessage(chatId, "❌ Error: " + escapeMarkdown(e.message), { parse_mode: 'Markdown' }); 
+            bot.sendMessage(chatId, "❌ Error: " + escapeMarkdown(e.message), { parse_mode: 'Markdown' });
         }
     } else if (state === "awaiting_plate_for_qr") {
         const plate = msg.text.toUpperCase().trim();
         userState.delete(chatId);
-        
+
         bot.sendMessage(chatId, `⏳ Generando PDF con QR para la placa *${plate}*...`, { parse_mode: 'Markdown' });
         try {
             const hash = crypto.createHash('sha256').update(buffer).digest('hex').toUpperCase();
@@ -618,19 +618,19 @@ bot.on('message', async (msg) => {
         if (domicilio.startsWith('/skip')) domicilio = "";
         const data = userAntiguaData.get(chatId);
         data.domicilio = domicilio;
-        
+
         const checkIA = async () => {
             if (!data.datosIA) {
                 const status = await bot.sendMessage(chatId, "⏳ *Esperando que la IA detecte la fecha...*", { parse_mode: 'Markdown' });
                 while (!data.datosIA) { await new Promise(r => setTimeout(r, 1000)); }
-                bot.deleteMessage(chatId, status.message_id).catch(() => {});
+                bot.deleteMessage(chatId, status.message_id).catch(() => { });
             }
             const fechaSugerida = data.datosIA.fechaAsiento || data.datosIA.fechaInferior || "";
             userState.set(chatId, "awaiting_antigua_fecha");
-            bot.sendMessage(chatId, 
+            bot.sendMessage(chatId,
                 `✅ **Datos Registrados.**\n\n` +
                 `📅 **Fecha Detectada:** \`${fechaSugerida}\`\n\n` +
-                `Introduce **LA FECHA** (o escribe /ok para usar la detectada):`, 
+                `Introduce **LA FECHA** (o escribe /ok para usar la detectada):`,
                 { parse_mode: 'Markdown' }
             );
         };
@@ -643,9 +643,9 @@ bot.on('message', async (msg) => {
         }
         data.fecha = fecha;
         userState.delete(chatId);
-        
+
         bot.sendMessage(chatId, `✨ *Generando Tarjeta Antigua...*`, { parse_mode: 'Markdown' });
-        
+
         try {
             const datos = data.datosIA || await extraerConIA_Antigua(buffer);
             datos.controlAnverso = data.controlAnverso;
@@ -661,7 +661,7 @@ bot.on('message', async (msg) => {
             if (data.placaSede) datos.placaSede = data.placaSede;
             if (data.sedeDomicilio) datos.sedeDomicilio = data.sedeDomicilio;
             if (data.domicilio) datos.domicilio = data.domicilio;
-            
+
             await generarTarjetaAntigua(chatId, datos, buffer);
             userAntiguaData.delete(chatId);
         } catch (e) {
@@ -676,24 +676,24 @@ async function finalizarInsercionQR(chatId, buffer, placa, hash, messageId = nul
     const page = pdfDoc.getPages()[0];
     const { width, height } = page.getSize();
     console.log(`[BOT] 📐 Dimensiones del PDF original: ${width}x${height}`);
-    
+
     // ✅ CAMBIO: URL sin "CERT-" y sin ".pdf", con ruta /Tive/
     const qrUrl = `${DOMAIN}/servicio/verCertificado/Tive/${hash}`;
-    const qrImg = await pdfDoc.embedPng(await QRCode.toDataURL(qrUrl, { 
+    const qrImg = await pdfDoc.embedPng(await QRCode.toDataURL(qrUrl, {
         margin: 1,
         color: { dark: '#000000', light: '#ffffff' }
     }));
-    
+
     const qrSize = QR_SIZE;
     const posX = (QR_X / 100) * width;
     const posY = height - ((QR_Y / 100) * height) - qrSize;
 
     console.log(`[BOT] 📍 Pegando QR en X:${posX.toFixed(2)}, Y:${posY.toFixed(2)} (Size: ${qrSize})`);
-    
+
     page.drawImage(qrImg, { x: posX, y: posY, width: qrSize, height: qrSize });
-    
+
     const pdfBytes = await pdfDoc.save();
-    
+
     // ✅ CAMBIO: Guardado en /servicio/verCertificado/Tive/HASH.pdf
     const finalFileName = `${hash}.pdf`;
     const finalPath = path.join(uploadDir, finalFileName);
@@ -701,20 +701,20 @@ async function finalizarInsercionQR(chatId, buffer, placa, hash, messageId = nul
     console.log(`[BOT] ✅ Certificado guardado en: ${finalPath}`);
 
     const fileName = `Certificado-Tive-${hash.substring(0, 8)}.pdf`;
-    
-    await bot.sendDocument(chatId, Buffer.from(pdfBytes), { 
-        caption: 
+
+    await bot.sendDocument(chatId, Buffer.from(pdfBytes), {
+        caption:
             `✨ *¡DOCUMENTO VERIFICADO EXITOSAMENTE!* ✨\n\n` +
             `━━━━━━━━━━━━━━━━━━━━\n` +
             `📂 *Archivo:* \`${placa}\`\n` +
             `🔐 *Hash de Seguridad:* \n\`${hash.substring(0, 32)}\`\n\`${hash.substring(32)}\`\n\n` +
             `━━━━━━━━━━━━━━━━━━━━\n\n` +
             `🌐 *Link de verificación:*\n\`${qrUrl}\`\n\n` +
-            `📱 _El código QR ha sido insertado en el documento para validación inmediata._`, 
-        parse_mode: 'Markdown' 
+            `📱 _El código QR ha sido insertado en el documento para validación inmediata._`,
+        parse_mode: 'Markdown'
     }, { filename: fileName });
-    
-    if (messageId) bot.deleteMessage(chatId, messageId).catch(() => {});
+
+    if (messageId) bot.deleteMessage(chatId, messageId).catch(() => { });
 }
 
 console.log("🤖 Bot TIVE IA Online!");
