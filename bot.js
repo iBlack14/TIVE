@@ -340,8 +340,8 @@ function extraerTiveCompletoConLibreria(pdfBuffer) {
     }
 
     const fechaTitulo = buscarValorTive(text, 'Fecha');
-    const tituloNo = buscarTituloNumeroTive(text);
-    const tituloNormalizado = normalizarTituloDesdeTituloNo(tituloNo);
+    const tituloNo = normalizarTituloDesdeTituloNo(buscarTituloNumeroTive(text));
+    const tituloNormalizado = tituloNo || normalizarTituloDesdeTituloNo(buscarTituloNumeroTive(text));
     const datos = {
         codVerif: '',
         fechaFinal: fechaTitulo,
@@ -820,7 +820,7 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null) {
         includetext: false,
         backgroundcolor: 'FFFFFF',
     }));
-    page.drawImage(code128Img, { x: 70, y: 319.9, width: 110, height: 20 });
+    page.drawImage(code128Img, { x: 64, y: 319.9, width: 100, height: 18 });
 
     const finalQRLink = qrCustomLink || `${DOMAIN_URL}/servicio/verCertificado/Tive/TIVE-${qrHeaderText.toUpperCase()}`;
     const pdf417Text = [
