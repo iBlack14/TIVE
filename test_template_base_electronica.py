@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -7,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 TEMPLATE_PATH = ROOT / "tarjeta" / "BASE ELECTRONICA TIVE PDF SIN RELLENO PDF.pdf"
 OUTPUT_PATH = ROOT / "RESULTADO_TEST_BASE_ELECTRONICA.pdf"
+DATA_JSON_PATH = ROOT / "datos1.json"
 
 
 FIELDS = [
@@ -91,6 +93,13 @@ DEMO_DATA = {
 }
 
 
+def load_data() -> dict[str, str]:
+    if DATA_JSON_PATH.exists():
+        loaded = json.loads(DATA_JSON_PATH.read_text(encoding="utf-8"))
+        return {**DEMO_DATA, **loaded}
+    return DEMO_DATA
+
+
 FONT_REGULAR_REF = "394 0 R"
 FONT_BOLD_REF = "395 0 R"
 CONTENT_REF = "396 0 R"
@@ -107,9 +116,10 @@ def pdf_escape(text: str) -> str:
 
 
 def build_stream() -> bytes:
+    source_data = load_data()
     lines = ["q", "BT", "0 0 0 rg"]
     for field in FIELDS:
-        value = DEMO_DATA.get(field["key"], field["key"].upper())
+        value = source_data.get(field["key"], field["key"].upper())
         font_name = "/FTESTB" if field["bold"] else "/FTEST"
         x = field["x"] + field.get("dx", 0)
         y = field["y"] + field.get("dy", 0)

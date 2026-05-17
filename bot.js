@@ -70,7 +70,7 @@ bot.on('callback_query', async (query) => {
         bot.editMessageText(`🧠 *Generando TIVE COMPLETO...*`, { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' });
         try {
             const datos = await extraerConIA(buffer);
-            await generarTiveCompleto(chatId, datos);
+            await iniciarCapturaFaltantesTiveCompleto(chatId, datos);
         } catch (e) {
             bot.sendMessage(chatId, `❌ Error: ${e.message}`);
         }
@@ -104,6 +104,7 @@ bot.on('callback_query', async (query) => {
 const userPdfs = new Map();
 const userState = new Map();
 const userAntiguaData = new Map();
+const userTiveCompletoData = new Map();
 
 // --- HANDLERS DE EVENTOS ---
 
@@ -245,6 +246,57 @@ function valorCompleto(datos, dataKey) {
     const value = datos[dataKey];
     if (value === undefined || value === null) return '';
     return String(value).trim();
+}
+
+const TIVE_COMPLETO_REQUIRED_FIELDS = [
+    { key: 'partida', label: 'PARTIDA REGISTRAL' },
+    { key: 'dua', label: 'DUA/DAM' },
+    { key: 'titulo', label: 'TÍTULO' },
+    { key: 'fechaTitulo', label: 'FECHA DEL TÍTULO' },
+    { key: 'placa', label: 'PLACA' },
+    { key: 'categoria', label: 'CATEGORÍA' },
+    { key: 'marca', label: 'MARCA' },
+    { key: 'modelo', label: 'MODELO' },
+    { key: 'color', label: 'COLOR' },
+    { key: 'vin', label: 'VIN' },
+    { key: 'serie', label: 'NÚMERO DE SERIE' },
+    { key: 'motor', label: 'NÚMERO DE MOTOR' },
+];
+
+function generarCodigoVerificacion() {
+    return Math.floor(10000000 + Math.random() * 90000000).toString();
+}
+
+function prepararDatosTiveCompleto(datos) {
+    const prepared = { ...datos };
+    prepared.placa = fmtPlaca(prepared.placa || '');
+    prepared.codVerif = safe(prepared.codVerif) || generarCodigoVerificacion();
+    prepared.fechaFinal = safe(prepared.fechaFinal) || safe(prepared.fechaTitulo);
+    prepared.añoFabricacion = safe(prepared.añoFabricacion) || safe(prepared.añoModelo);
+    return prepared;
+}
+
+function obtenerCamposFaltantesTiveCompleto(datos) {
+    return TIVE_COMPLETO_REQUIRED_FIELDS.filter(field => !safe(datos[field.key]));
+}
+
+async function iniciarCapturaFaltantesTiveCompleto(chatId, datos) {
+    const prepared = prepararDatosTiveCompleto(datos);
+    const missingFields = obtenerCamposFaltantesTiveCompleto(prepared);
+
+    if (missingFields.length === 0) {
+        userTiveCompletoData.delete(chatId);
+        userState.delete(chatId);
+        await generarTiveCompleto(chatId, prepared);
+        return;
+    }
+
+    userTiveCompletoData.set(chatId, { datos: prepared, missingFields, index: 0 });
+    userState.set(chatId, 'awaiting_tive_completo_field');
+    const current = missingFields[0];
+    await bot.sendMessage(chatId, `✍️ Falta el dato *${current.label}*.\nEnvíalo ahora para continuar con *TIVE COMPLETO*.`, {
+        parse_mode: 'Markdown'
+    });
 }
 
 async function extraerConIA(pdfBuffer) {
@@ -593,13 +645,11 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null) {
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const negro = rgb(0, 0, 0);
 
+    const baseDatos = prepararDatosTiveCompleto(datos);
     const datosCompletos = {
-        ...datos,
-        placa: fmtPlaca(datos.placa || ''),
-        zonaLimpia: limpiarEtiquetaRegistral(datos.zona),
-        sedeLimpia: limpiarEtiquetaRegistral(datos.sede),
-        fechaFinal: safe(datos.fechaFinal) || safe(datos.fechaTitulo),
-        añoFabricacion: safe(datos.añoFabricacion) || safe(datos.añoModelo),
+        ...baseDatos,
+        zonaLimpia: limpiarEtiquetaRegistral(baseDatos.zona),
+        sedeLimpia: limpiarEtiquetaRegistral(baseDatos.sede),
     };
 
     for (const field of TIVE_COMPLETO_FIELDS) {
@@ -723,7 +773,32 @@ bot.on('message', async (msg) => {
     const state = userState.get(chatId);
     const buffer = userPdfs.get(chatId);
 
-    if (state === "awaiting_qr" && msg.text && !msg.text.startsWith('/')) {
+    if (state === "awaiting_tive_completo_field" && msg.text && !msg.text.startsWith('/')) {
+        const pending = userTiveCompletoData.get(chatId);
+        if (!pending) {
+            userState.delete(chatId);
+            return bot.sendMessage(chatId, "⚠️ Se perdió el estado de captura. Vuelve a elegir *TIVE COMPLETO*.", { parse_mode: 'Markdown' });
+        }
+        const current = pending.missingFields[pending.index];
+        pending.datos[current.key] = msg.text.trim();
+        pending.index += 1;
+
+        if (pending.index >= pending.missingFields.length) {
+            userTiveCompletoData.delete(chatId);
+            userState.delete(chatId);
+            await bot.sendMessage(chatId, "✅ Datos faltantes completados. Generando *TIVE COMPLETO*...", { parse_mode: 'Markdown' });
+            try {
+                await generarTiveCompleto(chatId, pending.datos);
+            } catch (e) {
+                console.error(`[BOT] ❌ Error generando TIVE COMPLETO:`, e);
+                bot.sendMessage(chatId, "❌ Error: " + e.message);
+            }
+        } else {
+            userTiveCompletoData.set(chatId, pending);
+            const next = pending.missingFields[pending.index];
+            await bot.sendMessage(chatId, `✍️ Falta el dato *${next.label}*.\nEnvíalo para continuar.`, { parse_mode: 'Markdown' });
+        }
+    } else if (state === "awaiting_qr" && msg.text && !msg.text.startsWith('/')) {
         const customLink = msg.text;
         userState.delete(chatId);
         bot.sendMessage(chatId, `🧠 Procesando con IA...`);

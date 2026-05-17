@@ -1,0 +1,74 @@
+Este documento solo tiene fines informativos
+y no constituye publicidad registral.
+
+Inscripcion de Vehiculo
+2013 - 00007653
+Título Nro
+Partida
+60544320
+Placa :
+86681S
+           ________________________________________________________________________
+            PERSONA NATURAL
+               ESPINOZA MALUQUIS GRACIELA
+               DNI      44133902     Soltero
+           ________________________________________________________________________
+            Acto                    Primera Inscripcion de Dominio
+            Precio                  S/        4,914.00
+            Monto Pagado            S/        4,914.00
+            Forma de Pago           CONTADO
+            Observación             NO SE USO MEDIO DE PAGO
+           ________________________________________________________________________
+            Acto                    Primera Inscripcion de Dominio
+            Clase                   VEH. AUT. MEN.
+            Marca                   HONDA
+            Modelo                  CCG125
+            Año Modelo              2013
+            Año Fabricación         2013
+            Tipo Carrocería         TRIMOTO DE PASAJEROS
+            Color                   AZUL PLATA
+            Nro. Versión            NL
+            Nro. Serie              8WAKRF011DL046916
+            Nro. VIN                8WAKRF011DL046916
+            Nro. Motor              WH156FMI212J72860
+            Potencia Motor          7.2@8500
+            Tipo Combustible        GASOLINA
+            Nro. Cilindros          1
+            Cilindrada              0.124 cc
+            Peso Seco               0.235 tn
+            Peso Neto               0.235 tn
+            Carga Util              0.180 tn
+            Peso Bruto              0.415 tn
+            Nro. Asientos           3
+            Longitud                2.84 mt
+            Ancho                   1.31 mt
+            Altura                  1.71 mt
+            Fórmula Rodante         3X1
+            Nro. Pasajeros          2
+            Nro. Ruedas             3
+            Nro. Ejes               2
+            Tipo de Uso             Categoría L5
+            Categoria               L5
+            Observación             NO SE USO MEDIO DE PAGO
+           ________________________________________________________________________
+            Reacondicionado         NUEVO
+           ________________________________________________________________________
+            Documento:              Boleta de Venta
+            Funcionario:            Persona Juridica - IMPORTACIONES SALAZAR EIRL
+            Fecha:                  27/05/2013
+            Documento:              Certificado de Fabricacion
+            Funcionario:            Persona Juridica - HONDA SELVA DEL PERU SA
+            Fecha:                  21/01/2013
+            Documento:              Certificado de Conformidad
+            Funcionario:            Persona Juridica - UNI
+            Fecha:                  24/01/2013
+           ________________________________________________________________________
+            Título                  2013-7653
+            Fecha                   29/05/2013 12:17:41
+            Monto Cobrado           S/ 67.00
+            Recibo                  2013-03-1523
+Este documento solo tiene fines informativos
+y no constituye publicidad registral.
+
+            Fecha Asiento           04/06/2013
+           ________________________________________________________________________
