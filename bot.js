@@ -198,8 +198,8 @@ const TIVE_COMPLETO_FIELDS = [
     { key: 'sede_registral', dataKey: 'sedeLimpia', x: 141.0, y: 467.0, dx: -18, dy: 11, size: 8, bold: false },
     { key: 'parda_registral', dataKey: 'partida', x: 120.9, y: 452.9, dx: -3, dy: -7, size: 8, bold: false },
     { key: 'duadam', dataKey: 'dua', x: 103.1, y: 438, dx: 0, dy: -7, size: 8, bold: false },
-    { key: 'titulo', dataKey: 'titulo', x: 89.3, y: 422.3, dx: 0, dy: -8, size: 8, bold: false },
-    { key: 'fecha_del_titulo', dataKey: 'fechaTitulo', x: 126.3, y: 406.6, dx: -3, dy: -8, size: 8, bold: false },
+    { key: 'titulo', dataKey: 'titulo', x: 89.3, y: 422.3, dx: -8, dy: -7, size: 8, bold: false },
+    { key: 'fecha_del_titulo', dataKey: 'fechaTitulo', x: 126.3, y: 406.6, dx: -6.5, dy: -7, size: 8, bold: false },
     { key: 'categoria', dataKey: 'categoria', x: 105.1, y: 274.4, dx: 0, dy: -8, size: 8, bold: false },
     { key: 'marca', dataKey: 'marca', x: 89.9, y: 261.1, dx: 0, dy: -8, size: 8, bold: false },
     { key: 'modelo', dataKey: 'modelo', x: 96.8, y: 246.8, dx: 0, dy: -8, size: 8, bold: false },
@@ -215,7 +215,7 @@ const TIVE_COMPLETO_FIELDS = [
     { key: 'pasajeros', dataKey: 'pasajeros', x: 103.1, y: 96.4, dx: 0, dy: -8, size: 8, bold: false },
     { key: 'ruedas', dataKey: 'ruedas', x: 103.9, y: 67, dx: 0, dy: -7, size: 8, bold: false },
     { key: 'ejes', dataKey: 'ejes', x: 103.5, y: 81.8, dx: 0, dy: -7, size: 8, bold: false },
-    { key: 'placa', dataKey: 'placa', x: 317.9, y: 406.9, dx: -5, dy: -8, size: 25, bold: true },
+    { key: 'placa', dataKey: 'placa', x: 317.9, y: 406.9, dx: -20, dy: -8, size: 33, bold: true },
     { key: 'año_fabricacion', dataKey: 'añoFabricacion', x: 392.6, y: 272.6, dx: 0, dy: -8, size: 8, bold: false },
     { key: 'cilindros', dataKey: 'cilindros', x: 208.6, y: 114.2, dx: 0, dy: -8, size: 8, bold: false },
     { key: 'longitud', dataKey: 'longitud', x: 213.9, y: 100.2, dx: 0, dy: -8, size: 8, bold: false },
@@ -227,7 +227,7 @@ const TIVE_COMPLETO_FIELDS = [
     { key: 'campo_31', dataKey: 'cargaUtil', x: 322.6, y: 71.6, dx: 0, dy: -8, size: 8, bold: false },
     { key: 'version', dataKey: 'version', x: 273.9, y: 155.9, dx: 0, dy: -8, size: 8, bold: false },
     { key: 'año_modelo', dataKey: 'añoModelo', x: 396.6, y: 262.9, dx: 0, dy: -8, size: 8, bold: false },
-    { key: 'titulo_numero', dataKey: 'tituloNo', x: 190.6, y: 590.2, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'titulo_numero', dataKey: 'tituloNo', x: 190.6, y: 590.2, dx: -6.5, dy: -8, size: 8, bold: false },
 ];
 
 function limpiarEtiquetaRegistral(valor = '') {
@@ -247,6 +247,12 @@ function valorCompleto(datos, dataKey) {
     const value = datos[dataKey];
     if (value === undefined || value === null) return '';
     return String(value).trim();
+}
+
+function placaRequiereConfirmacion(valor = '') {
+    const original = safe(valor);
+    if (!original) return true;
+    return !original.includes('-');
 }
 
 function extraerTextoPdfTive(pdfBuffer) {
@@ -301,6 +307,12 @@ function buscarValorTive(texto, etiqueta) {
     const regex = new RegExp(`${escaped}\\s+([^\\n]+)`, 'i');
     const match = regex.exec(texto);
     return match ? safe(match[1]) : '';
+}
+
+function normalizarValorNumerico(valor = '') {
+    const limpio = safe(valor).replace(',', '.');
+    const match = limpio.match(/\d+(?:\.\d+)?/);
+    return match ? match[0] : limpio;
 }
 
 function buscarTituloNumeroTive(texto) {
@@ -367,15 +379,16 @@ function extraerTiveCompletoConLibreria(pdfBuffer) {
         ruedas: buscarValorTive(text, 'Nro. Ruedas'),
         ejes: buscarValorTive(text, 'Nro. Ejes'),
         placa: buscarValorTive(text, 'Placa :'),
+        placaOriginal: buscarValorTive(text, 'Placa :'),
         añoFabricacion: buscarValorTive(text, 'Año Fabricación') || buscarValorTive(text, 'Ano Fabricacion'),
         cilindros: buscarValorTive(text, 'Nro. Cilindros'),
-        longitud: buscarValorTive(text, 'Longitud'),
-        altura: buscarValorTive(text, 'Altura'),
-        ancho: buscarValorTive(text, 'Ancho'),
-        cilindrada: buscarValorTive(text, 'Cilindrada'),
-        pBruto: buscarValorTive(text, 'Peso Bruto'),
-        pNeto: buscarValorTive(text, 'Peso Neto'),
-        cargaUtil: buscarValorTive(text, 'Carga Util'),
+        longitud: normalizarValorNumerico(buscarValorTive(text, 'Longitud')),
+        altura: normalizarValorNumerico(buscarValorTive(text, 'Altura')),
+        ancho: normalizarValorNumerico(buscarValorTive(text, 'Ancho')),
+        cilindrada: normalizarValorNumerico(buscarValorTive(text, 'Cilindrada')),
+        pBruto: normalizarValorNumerico(buscarValorTive(text, 'Peso Bruto')),
+        pNeto: normalizarValorNumerico(buscarValorTive(text, 'Peso Neto')),
+        cargaUtil: normalizarValorNumerico(buscarValorTive(text, 'Carga Util')),
         version: buscarValorTive(text, 'Nro. Version') || buscarValorTive(text, 'Nro. Versión'),
         añoModelo: buscarValorTive(text, 'Año Modelo') || buscarValorTive(text, 'Ano Modelo'),
         tituloNo,
@@ -386,6 +399,8 @@ function extraerTiveCompletoConLibreria(pdfBuffer) {
 }
 
 const TIVE_COMPLETO_REQUIRED_FIELDS = [
+    { key: 'zona', label: 'ZONA REGISTRAL' },
+    { key: 'sede', label: 'SEDE REGISTRAL' },
     { key: 'partida', label: 'PARTIDA REGISTRAL' },
     { key: 'dua', label: 'DUA/DAM' },
     { key: 'titulo', label: 'TÍTULO' },
@@ -406,6 +421,7 @@ function generarCodigoVerificacion() {
 
 function prepararDatosTiveCompleto(datos) {
     const prepared = { ...datos };
+    prepared.placaOriginal = safe(prepared.placaOriginal || prepared.placa);
     prepared.placa = fmtPlaca(prepared.placa || '');
     prepared.codVerif = safe(prepared.codVerif) || generarCodigoVerificacion();
     prepared.fechaFinal = safe(prepared.fechaFinal) || safe(prepared.fechaTitulo);
@@ -414,7 +430,10 @@ function prepararDatosTiveCompleto(datos) {
 }
 
 function obtenerCamposFaltantesTiveCompleto(datos) {
-    return TIVE_COMPLETO_REQUIRED_FIELDS.filter(field => !safe(datos[field.key]));
+    return TIVE_COMPLETO_REQUIRED_FIELDS.filter(field => {
+        if (field.key === 'placa') return placaRequiereConfirmacion(datos.placaOriginal);
+        return !safe(datos[field.key]);
+    });
 }
 
 async function iniciarCapturaFaltantesTiveCompleto(chatId, datos) {
@@ -820,7 +839,7 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null) {
         includetext: false,
         backgroundcolor: 'FFFFFF',
     }));
-    page.drawImage(code128Img, { x: 64, y: 319.9, width: 100, height: 18 });
+    page.drawImage(code128Img, { x: 90, y: 323, width: 80, height: 18 });
 
     const finalQRLink = qrCustomLink || `${DOMAIN_URL}/servicio/verCertificado/Tive/TIVE-${qrHeaderText.toUpperCase()}`;
     const pdf417Text = [
@@ -842,7 +861,7 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null) {
         paddingwidth: 0,
         paddingheight: 0,
     }));
-    page.drawImage(pdf417Img, { x: 60, y: 10, width: 260, height: 42 });
+    page.drawImage(pdf417Img, { x: 60, y: 15, width: 260, height: 40 });
 
     const outBytes = await pdfDoc.save();
     const fileName = `TIVE_COMPLETO_${qrHeaderText || 'DOC'}.pdf`;
@@ -917,7 +936,11 @@ bot.on('message', async (msg) => {
             return bot.sendMessage(chatId, "⚠️ Se perdió el estado de captura. Vuelve a elegir *TIVE COMPLETO*.", { parse_mode: 'Markdown' });
         }
         const current = pending.missingFields[pending.index];
-        pending.datos[current.key] = msg.text.trim();
+        const rawValue = msg.text.trim();
+        pending.datos[current.key] = current.key === 'placa' ? fmtPlaca(rawValue) : rawValue;
+        if (current.key === 'placa') {
+            pending.datos.placaOriginal = rawValue;
+        }
         pending.index += 1;
 
         if (pending.index >= pending.missingFields.length) {

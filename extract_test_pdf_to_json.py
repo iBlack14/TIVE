@@ -66,9 +66,24 @@ def find_title_value(text: str) -> str:
     return ''
 
 
+def normalize_title_number(value: str) -> str:
+    compact = re.sub(r'\s+', '', value or '')
+    match = re.fullmatch(r'(\d+)-(\d+)', compact)
+    if not match:
+        return compact
+    year, number = match.groups()
+    return f'{number}-{year}'
+
+
+def normalize_numeric_value(value: str) -> str:
+    cleaned = (value or '').strip().replace(',', '.')
+    match = re.search(r'\d+(?:\.\d+)?', cleaned)
+    return match.group(0) if match else cleaned
+
+
 def build_json(text: str) -> dict[str, str]:
     fecha_titulo = find_value(text, 'Fecha')
-    titulo_no = find_title_number(text)
+    titulo_no = normalize_title_number(find_title_number(text))
 
     return {
         "codigo_de_verificacion": "",
@@ -77,7 +92,7 @@ def build_json(text: str) -> dict[str, str]:
         "sede_registral": "",
         "parda_registral": find_value(text, 'Partida'),
         "duadam": "",
-        "titulo": find_title_value(text),
+        "titulo": titulo_no or normalize_title_number(find_title_value(text)),
         "fecha_del_titulo": fecha_titulo.split()[0] if fecha_titulo else "",
         "categoria": find_value(text, 'Categoria'),
         "marca": find_value(text, 'Marca'),
@@ -97,13 +112,13 @@ def build_json(text: str) -> dict[str, str]:
         "placa": find_value(text, 'Placa :'),
         "año_fabricacion": find_value(text, 'Año Fabricación'),
         "cilindros": find_value(text, 'Nro. Cilindros'),
-        "longitud": find_value(text, 'Longitud'),
-        "altura": find_value(text, 'Altura'),
-        "ancho": find_value(text, 'Ancho'),
-        "cilindro": find_value(text, 'Cilindrada'),
-        "p_bruto": find_value(text, 'Peso Bruto'),
-        "campo_30": find_value(text, 'Peso Neto'),
-        "campo_31": find_value(text, 'Carga Util'),
+        "longitud": normalize_numeric_value(find_value(text, 'Longitud')),
+        "altura": normalize_numeric_value(find_value(text, 'Altura')),
+        "ancho": normalize_numeric_value(find_value(text, 'Ancho')),
+        "cilindro": normalize_numeric_value(find_value(text, 'Cilindrada')),
+        "p_bruto": normalize_numeric_value(find_value(text, 'Peso Bruto')),
+        "campo_30": normalize_numeric_value(find_value(text, 'Peso Neto')),
+        "campo_31": normalize_numeric_value(find_value(text, 'Carga Util')),
         "version": find_value(text, 'Nro. Versión'),
         "año_modelo": find_value(text, 'Año Modelo'),
         "titulo_numero": titulo_no,

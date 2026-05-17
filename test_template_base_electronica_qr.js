@@ -18,10 +18,10 @@ const HEADER_H = HEADER_W;
 
 // Codigo 2: zona donde antes salia el texto del link
 const PLACA_CUERPO = 'ABC-123';
-const BODY_X = 70;
-const BODY_Y = 319.9;
-const BODY_W = 110;
-const BODY_H = 20;
+const BODY_X = 90;
+const BODY_Y = 323;
+const BODY_W = 80;
+const BODY_H = 18;
 
 // Codigo 3: franja inferior tipo PDF417 debajo de ejes/ancho
 const PDF417_TECNICO = [
@@ -33,9 +33,9 @@ const PDF417_TECNICO = [
   'MOTOR:2ZR-9876543',
 ].join('\n');
 const TECH_X = 60;
-const TECH_Y = 10;
+const TECH_Y = 15;
 const TECH_W = 260;
-const TECH_H = 42;
+const TECH_H = 40;
 
 async function main() {
   if (!fs.existsSync(INPUT_PATH)) {

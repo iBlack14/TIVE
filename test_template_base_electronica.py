@@ -18,8 +18,8 @@ FIELDS = [
     {"key": "sede_registral", "x": 141.0, "y": 467.0, "dx": -18, "dy": 11, "font_size": 8, "bold": False},
     {"key": "parda_registral", "x": 120.9, "y": 452.9, "dx": -3, "dy": -7, "font_size": 8, "bold": False},
     {"key": "duadam", "x": 103.1, "y": 438, "dx": 0, "dy": -7, "font_size": 8, "bold": False},
-    {"key": "titulo", "x": 89.3, "y": 422.3, "dx": 0, "dy": -8, "font_size": 8, "bold": False},
-    {"key": "fecha_del_titulo", "x": 126.3, "y": 406.6, "dx": -3, "dy": -8, "font_size": 8, "bold": False},
+    {"key": "titulo", "x": 89.3, "y": 422.3, "dx": -8, "dy": -7, "font_size": 8, "bold": False},
+    {"key": "fecha_del_titulo", "x": 126.3, "y": 406.6, "dx": -6.5, "dy": -7, "font_size": 8, "bold": False},
     {"key": "categoria", "x": 105.1, "y": 274.4, "dx": 0, "dy": -8, "font_size": 8, "bold": False},
     {"key": "marca", "x": 89.9, "y": 261.1, "dx": 0, "dy": -8, "font_size": 8, "bold": False},
     {"key": "modelo", "x": 96.8, "y": 246.8, "dx": 0, "dy": -8, "font_size": 8, "bold": False},
@@ -35,7 +35,7 @@ FIELDS = [
     {"key": "pasajeros", "x": 103.1, "y": 96.4, "dx": 0, "dy": -8, "font_size": 8, "bold": False},
     {"key": "ruedas", "x": 103.9, "y": 67, "dx": 0, "dy": -7, "font_size": 8, "bold": False},
     {"key": "ejes", "x": 103.5, "y": 81.8, "dx": 0, "dy": -7, "font_size": 8, "bold": False},
-    {"key": "placa", "x": 317.9, "y": 406.9, "dx": -5, "dy": -8, "font_size": 25, "bold": True},
+    {"key": "placa", "x": 317.9, "y": 406.9, "dx": -20, "dy": -8, "font_size": 33, "bold": True},
     {"key": "año_fabricacion", "x": 392.6, "y": 272.6, "dx": 0, "dy": -8, "font_size": 8, "bold": False},
     {"key": "cilindros", "x": 208.6, "y": 114.2, "dx": 0, "dy": -8, "font_size": 8, "bold": False},
     {"key": "longitud", "x": 213.9, "y": 100.2, "dx": 0, "dy": -8, "font_size": 8, "bold": False},
@@ -47,7 +47,7 @@ FIELDS = [
     {"key": "campo_31", "x": 322.6, "y": 71.6, "dx": 0, "dy": -8, "font_size": 8, "bold": False},
     {"key": "version", "x": 273.9, "y": 155.9, "dx": 0, "dy": -8, "font_size": 8, "bold": False},
     {"key": "año_modelo", "x": 396.6, "y": 262.9, "dx": 0, "dy": -8, "font_size": 8, "bold": False},
-    {"key": "titulo_numero", "x": 190.6, "y": 590.2, "dx": 0, "dy": -8, "font_size": 8, "bold": False},
+    {"key": "titulo_numero", "x": 190.6, "y": 590.2, "dx": -6.5, "dy": -8, "font_size": 8, "bold": False},
     {"key": "qr", "x": 102.6, "y": 333.9, "dx": 0, "dy": -8, "font_size": 8, "bold": False},
 ]
 
@@ -59,7 +59,7 @@ DEMO_DATA = {
     "sede_registral": "TARAPOTO",
     "parda_registral": "PARTIDA 11024567",
     "duadam": "DAM 118-2026-10-998877",
-    "titulo": "TIT-2026-000456",
+    "titulo": "000456-2026",
     "fecha_del_titulo": "12/05/2026",
     "categoria": "M1",
     "marca": "TOYOTA",
@@ -88,7 +88,7 @@ DEMO_DATA = {
     "campo_31": "445 KG",
     "version": "1.8 XEI CVT",
     "año_modelo": "2026",
-    "titulo_numero": "TN-2026-778899",
+    "titulo_numero": "778899-2026",
     "qr": "",
 }
 
