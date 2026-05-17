@@ -66,6 +66,14 @@ bot.on('callback_query', async (query) => {
         } catch (e) {
             bot.sendMessage(chatId, `❌ Error: ${e.message}`);
         }
+    } else if (data === "gen_tive_completo") {
+        bot.editMessageText(`🧠 *Generando TIVE COMPLETO...*`, { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' });
+        try {
+            const datos = await extraerConIA(buffer);
+            await generarTiveCompleto(chatId, datos);
+        } catch (e) {
+            bot.sendMessage(chatId, `❌ Error: ${e.message}`);
+        }
     } else if (data === "insert_qr_only") {
         const hash = crypto.createHash('sha256').update(buffer).digest('hex').toUpperCase();
         await finalizarInsercionQR(chatId, buffer, "CERTIFICADO", hash, messageId);
@@ -107,6 +115,7 @@ if (DOMAIN.endsWith('/')) DOMAIN = DOMAIN.slice(0, -1);
 const QR_X = parseFloat(process.env.QR_X) || 12.2;
 const QR_Y = parseFloat(process.env.QR_Y) || 10.2;
 const QR_SIZE = parseFloat(process.env.QR_SIZE) || 72;
+const COMPLETE_TEMPLATE_NAME = 'BASE ELECTRONICA TIVE PDF SIN RELLENO PDF.pdf';
 
 // ✅ CAMBIO: Carpeta actualizada a /servicio/verCertificado/Tive/
 const uploadDir = path.join(__dirname, 'servicio', 'verCertificado', 'Tive');
@@ -178,6 +187,64 @@ function getTemplatePath(name) {
         }
     }
     throw new Error(`No se encontró la plantilla ${name}. Rutas revisadas: ${p.join(', ')}`);
+}
+
+const TIVE_COMPLETO_FIELDS = [
+    { key: 'codigo_de_verificacion', dataKey: 'codVerif', x: 231, y: 602, dx: -3, dy: -7, size: 8, bold: false },
+    { key: 'fecha', dataKey: 'fechaFinal', x: 180.8, y: 577.5, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'zona_registral', dataKey: 'zonaLimpia', x: 144.0, y: 482.0, dx: -14, dy: 7, size: 8, bold: false },
+    { key: 'sede_registral', dataKey: 'sedeLimpia', x: 141.0, y: 467.0, dx: -18, dy: 11, size: 8, bold: false },
+    { key: 'parda_registral', dataKey: 'partida', x: 120.9, y: 452.9, dx: -3, dy: -7, size: 8, bold: false },
+    { key: 'duadam', dataKey: 'dua', x: 103.1, y: 438, dx: 0, dy: -7, size: 8, bold: false },
+    { key: 'titulo', dataKey: 'titulo', x: 89.3, y: 422.3, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'fecha_del_titulo', dataKey: 'fechaTitulo', x: 126.3, y: 406.6, dx: -3, dy: -8, size: 8, bold: false },
+    { key: 'categoria', dataKey: 'categoria', x: 105.1, y: 274.4, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'marca', dataKey: 'marca', x: 89.9, y: 261.1, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'modelo', dataKey: 'modelo', x: 96.8, y: 246.8, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'color', dataKey: 'color', x: 88.4, y: 233.2, dx: 0, dy: -7, size: 8, bold: false },
+    { key: 'numero_de_vin', dataKey: 'vin', x: 120.5, y: 220.2, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'numero_de_serie', dataKey: 'serie', x: 128.3, y: 206.2, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'numero_motor', dataKey: 'motor', x: 118, y: 191.9, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'carroceria', dataKey: 'carroceria', x: 104.5, y: 178.6, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'potencia', dataKey: 'potencia', x: 99.6, y: 164, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'form_rod', dataKey: 'formRod', x: 107.6, y: 150.7, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'combusble', dataKey: 'combustible', x: 108.6, y: 138.4, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'asientos', dataKey: 'asientos', x: 104.1, y: 108.5, dx: 0, dy: -7, size: 8, bold: false },
+    { key: 'pasajeros', dataKey: 'pasajeros', x: 103.1, y: 96.4, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'ruedas', dataKey: 'ruedas', x: 103.9, y: 67, dx: 0, dy: -7, size: 8, bold: false },
+    { key: 'ejes', dataKey: 'ejes', x: 103.5, y: 81.8, dx: 0, dy: -7, size: 8, bold: false },
+    { key: 'placa', dataKey: 'placa', x: 317.9, y: 406.9, dx: -5, dy: -8, size: 25, bold: true },
+    { key: 'año_fabricacion', dataKey: 'añoFabricacion', x: 392.6, y: 272.6, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'cilindros', dataKey: 'cilindros', x: 208.6, y: 114.2, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'longitud', dataKey: 'longitud', x: 213.9, y: 100.2, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'altura', dataKey: 'altura', x: 213.9, y: 86.2, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'ancho', dataKey: 'ancho', x: 212.6, y: 71.6, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'cilindro', dataKey: 'cilindrada', x: 333.9, y: 109.6, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'p_bruto', dataKey: 'pBruto', x: 326.6, y: 97.6, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'campo_30', dataKey: 'pNeto', x: 329.9, y: 82.9, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'campo_31', dataKey: 'cargaUtil', x: 322.6, y: 71.6, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'version', dataKey: 'version', x: 273.9, y: 155.9, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'año_modelo', dataKey: 'añoModelo', x: 396.6, y: 262.9, dx: 0, dy: -8, size: 8, bold: false },
+    { key: 'titulo_numero', dataKey: 'tituloNo', x: 190.6, y: 590.2, dx: 0, dy: -8, size: 8, bold: false },
+];
+
+function limpiarEtiquetaRegistral(valor = '') {
+    let limpio = safe(valor);
+    const labelsToRemove = [
+        "ZONA REGISTRAL N°", "ZONA REGISTRAL Nº", "ZONA REGISTRAL N", "ZONA REGISTRAL",
+        "SEDE REGISTRAL -", "SEDE REGISTRAL-", "SEDE REGISTRAL", "SEDE"
+    ];
+    labelsToRemove.forEach(label => {
+        const regex = new RegExp(`^${label}\\s*[:\\-]*\\s*`, 'i');
+        limpio = limpio.replace(regex, '');
+    });
+    return limpio.trim();
+}
+
+function valorCompleto(datos, dataKey) {
+    const value = datos[dataKey];
+    if (value === undefined || value === null) return '';
+    return String(value).trim();
 }
 
 async function extraerConIA(pdfBuffer) {
@@ -514,6 +581,89 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
     }
 }
 
+async function generarTiveCompleto(chatId, datos, qrCustomLink = null) {
+    console.log(`[TIVE COMPLETO] 🎨 Generando PDF completo para: ${safe(datos.placa)}`);
+
+    const templatePath = getTemplatePath(COMPLETE_TEMPLATE_NAME);
+    const pdfDoc = await PDFDocument.load(fs.readFileSync(templatePath));
+    const page = pdfDoc.getPages()[0];
+    const { width, height } = page.getSize();
+
+    const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const negro = rgb(0, 0, 0);
+
+    const datosCompletos = {
+        ...datos,
+        placa: fmtPlaca(datos.placa || ''),
+        zonaLimpia: limpiarEtiquetaRegistral(datos.zona),
+        sedeLimpia: limpiarEtiquetaRegistral(datos.sede),
+        fechaFinal: safe(datos.fechaFinal) || safe(datos.fechaTitulo),
+        añoFabricacion: safe(datos.añoFabricacion) || safe(datos.añoModelo),
+    };
+
+    for (const field of TIVE_COMPLETO_FIELDS) {
+        const value = valorCompleto(datosCompletos, field.dataKey);
+        if (!value) continue;
+        page.drawText(value, {
+            x: field.x + field.dx,
+            y: field.y + field.dy,
+            size: field.size,
+            font: field.bold ? fontBold : fontRegular,
+            color: negro,
+        });
+    }
+
+    const qrHeaderText = safe(datosCompletos.placa) || 'SIN-PLACA';
+    const qrHeaderImg = await pdfDoc.embedPng(await QRCode.toDataURL(qrHeaderText, {
+        margin: 1,
+        color: { dark: '#000000', light: '#ffffff' },
+    }));
+    const headerW = QR_SIZE;
+    const headerH = headerW;
+    const headerX = (QR_X / 100) * width;
+    const headerY = height - ((QR_Y / 100) * height) - headerW;
+    page.drawImage(qrHeaderImg, { x: headerX, y: headerY, width: headerW, height: headerH });
+
+    const code128Img = await pdfDoc.embedPng(await bwipjs.toBuffer({
+        bcid: 'code128',
+        text: qrHeaderText,
+        scale: 2,
+        height: 18,
+        includetext: false,
+        backgroundcolor: 'FFFFFF',
+    }));
+    page.drawImage(code128Img, { x: 70, y: 319.9, width: 110, height: 20 });
+
+    const finalQRLink = qrCustomLink || `${DOMAIN_URL}/servicio/verCertificado/Tive/TIVE-${qrHeaderText.toUpperCase()}`;
+    const pdf417Text = [
+        `PLACA:${qrHeaderText}`,
+        `MARCA:${safe(datosCompletos.marca)}`,
+        `MODELO:${safe(datosCompletos.modelo)}`,
+        `VIN:${safe(datosCompletos.vin)}`,
+        `SERIE:${safe(datosCompletos.serie)}`,
+        `MOTOR:${safe(datosCompletos.motor)}`,
+        `URL:${finalQRLink}`,
+    ].join('\n');
+    const pdf417Img = await pdfDoc.embedPng(await bwipjs.toBuffer({
+        bcid: 'pdf417',
+        text: pdf417Text,
+        scale: 1,
+        height: 16,
+        includetext: false,
+        backgroundcolor: 'FFFFFF',
+        paddingwidth: 0,
+        paddingheight: 0,
+    }));
+    page.drawImage(pdf417Img, { x: 65, y: 29, width: 260, height: 42 });
+
+    const outBytes = await pdfDoc.save();
+    const fileName = `TIVE_COMPLETO_${qrHeaderText || 'DOC'}.pdf`;
+    await bot.sendDocument(chatId, Buffer.from(outBytes), {
+        caption: `✅ TIVE COMPLETO generado para ${qrHeaderText}`,
+    }, { filename: fileName });
+}
+
 bot.onText(/\/start/, (msg) => {
     console.log(`[BOT] 📥 Comando /start recibido de ${msg.from.username || msg.from.id}`);
     if (!isAuthorized(msg)) return;
@@ -548,6 +698,7 @@ bot.on('document', async (msg) => {
             reply_markup: {
                 inline_keyboard: [
                     [{ text: "🚀 Generar Fotos TIVE PVC", callback_data: "ask_qr" }],
+                    [{ text: "🧾 TIVE COMPLETO", callback_data: "gen_tive_completo" }],
                     [{ text: "📜 Generar Tarjeta Antigua", callback_data: "gen_antigua" }],
                     [{ text: "🔐 Insertar QR en PDF Original", callback_data: "insert_qr_only" }]
                 ]

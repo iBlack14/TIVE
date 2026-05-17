@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor PDF — Plantilla con OCR</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --bg: #f4f3ef;
+      --surface: #ffffff;
+      --surface2: #f8f7f4;
+      --border: rgba(0, 0, 0, 0.1);
+      --border2: rgba(0, 0, 0, 0.18);
+      --text: #1a1a1a;
+      --text2: #666;
+      --text3: #999;
+      --blue: #2563eb;
+      --blue-light: #eff6ff;
+      --green: #16a34a;
+      --green-light: #f0fdf4;
+      --purple: #7c3aed;
+      --purple-light: #f5f3ff;
+      --red: #dc2626;
+      --amber: #d97706;
+      --radius: 8px;
+      --radius-lg: 12px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden
+    }
+
+    /* LAYOUT */
+    .app {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      grid-template-rows: 52px 1fr;
+      height: 100vh
+    }
+
+    .topbar {
+      grid-column: 1/-1;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 1.25rem;
+      gap: 1rem
+    }
+
+    .topbar-title {
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: .5rem
+    }
+
+    .topbar-title i {
+      color: var(--blue);
+      font-size: 18px
+    }
+
+    .topbar-steps {
+      display: flex;
+      align-items: center;
+      gap: .25rem;
+      flex: 1;
+      justify-content: center
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+      font-size: 12px;
+      padding: .3rem .65rem;
+      border-radius: 20px;
+      color: var(--text3);
+      font-weight: 500;
+      transition: .2s
+    }
+
+    .step.active {
+      background: var(--blue-light);
+      color: var(--blue)
+    }
+
+    .step.done {
+      color: var(--green)
+    }
+
+    .step-sep {
+      color: var(--border2);
+      font-size: 14px
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden
+    }
+
+    .sidebar-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem
+    }
+
+    .sidebar-footer {
+      padding: .75rem 1rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: .5rem
+    }
+
+    /* PANELS — mostrar/ocultar según paso */
+    .panel {
+      display: none;
+      flex-direction: column;
+      gap: .85rem
+    }
+
+    .panel.visible {
+      display: flex
+    }
+
+    /* CANVAS AREA */
+    .canvas-area {
+      overflow: auto;
+      background: #3a3a3a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.5rem;
+      gap: .75rem;
+      position: relative
+    }
+
+    .pdf-wrapper {
+      position: relative;
+      display: inline-block;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, .45)
+    }
+
+    canvas#pdfCanvas {
+      display: block
+    }
+
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none
+    }
+
+    .page-nav {
+      display: flex;
+      align-items: center;
+      gap: .5rem
+    }
+
+    .page-nav button {
+      background: rgba(255, 255, 255, .12);
+      border: 1px solid rgba(255, 255, 255, .15);
+      color: #fff;
+      border-radius: 6px;
+      padding: .25rem .6rem;
+      cursor: pointer;
+      font-size: 13px;
+      display: flex;
+      align-items: center
+    }
+
+    .page-nav button:hover {
+      background: rgba(255, 255, 255, .22)
+    }
+
+    .page-nav span {
+      color: rgba(255, 255, 255, .8);
+      font-size: 13px;
+      min-width: 80px;
+      text-align: center
+    }
+
+    .zoom-controls {
+      display: flex;
+      align-items: center;
+      gap: .35rem
+    }
+
+    .zoom-controls button {
+      background: rgba(255, 255, 255, .12);
+      border: 1px solid rgba(255, 255, 255, .15);
+      color: #fff;
+      border-radius: 6px;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px
+    }
+
+    .zoom-controls button:hover {
+      background: rgba(255, 255, 255, .22)
+    }
+
+    .zoom-controls span {
+      color: rgba(255, 255, 255, .7);
+      font-size: 12px;
+      min-width: 40px;
+      text-align: center
+    }
+
+    /* EMPTY STATE */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 1rem;
+      color: rgba(255, 255, 255, .35)
+    }
+
+    .empty-state i {
+      font-size: 64px
+    }
+
+    .empty-state p {
+      font-size: 14px
+    }
+
+    /* MARKERS */
+    .marker {
+      position: absolute;
+      pointer-events: all;
+      cursor: move;
+      user-select: none;
+      display: flex;
+      align-items: center;
+    }
+
+    .marker-label {
+      position: absolute;
+      right: 100%;
+      margin-right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 9px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 3px;
+      white-space: nowrap;
+      color: #fff;
+      letter-spacing: .02em;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+      z-index: 10;
+    }
+
+    .marker-content {
+      border: none;
+      padding: 0;
+      margin: 0;
+      line-height: 1;
+      white-space: nowrap;
+      min-width: 80px;
+      min-height: 1em;
+      outline: 1.5px dashed;
+      outline-offset: 3px;
+      border-radius: 1px;
+      background: transparent;
+    }
+
+    /* OCR = verde, manual = morado, seleccionado = rojo */
+    .marker.src-ocr .marker-label {
+      background: var(--green)
+    }
+
+    .marker.src-ocr .marker-content {
+      outline-color: var(--green);
+      background: rgba(22, 163, 74, 0.06);
+      color: var(--green)
+    }
+
+    .marker.src-manual .marker-label {
+      background: var(--purple)
+    }
+
+    .marker.src-manual .marker-content {
+      outline-color: var(--purple);
+      background: rgba(124, 58, 237, 0.06);
+      color: var(--purple)
+    }
+
+    .marker.selected .marker-label {
+      background: var(--red)
+    }
+
+    .marker.selected .marker-content {
+      outline-color: var(--red);
+      background: rgba(220, 38, 38, 0.06);
+      color: var(--red);
+      outline-style: solid;
+    }
+
+    /* UPLOAD ZONE */
+    .upload-zone {
+      border: 2px dashed var(--border2);
+      border-radius: var(--radius-lg);
+      padding: 2rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: .2s;
+      color: var(--text2)
+    }
+
+    .upload-zone:hover {
+      border-color: var(--blue);
+      background: var(--blue-light)
+    }
+
+    .upload-zone i {
+      font-size: 32px;
+      display: block;
+      margin-bottom: .5rem;
+      color: var(--text3)
+    }
+
+    .upload-zone p {
+      font-size: 13px
+    }
+
+    .upload-zone.loaded {
+      border-color: var(--green);
+      background: var(--green-light)
+    }
+
+    .upload-zone.loaded i {
+      color: var(--green)
+    }
+
+    /* BUTTONS */
+    .btn {
+      padding: .55rem 1rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border2);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .4rem;
+      transition: .15s;
+      width: 100%
+    }
+
+    .btn:disabled {
+      opacity: .4;
+      cursor: not-allowed
+    }
+
+    .btn-primary {
+      background: var(--blue);
+      color: #fff;
+      border-color: #1d4ed8
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #1d4ed8
+    }
+
+    .btn-ocr {
+      background: var(--purple);
+      color: #fff;
+      border-color: #6d28d9
+    }
+
+    .btn-ocr:hover:not(:disabled) {
+      background: #6d28d9
+    }
+
+    .btn-green {
+      background: var(--green);
+      color: #fff;
+      border-color: #15803d
+    }
+
+    .btn-green:hover:not(:disabled) {
+      background: #15803d
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text)
+    }
+
+    .btn-ghost:hover:not(:disabled) {
+      background: var(--surface2)
+    }
+
+    .btn-sm {
+      padding: .35rem .7rem;
+      font-size: 12px;
+      width: auto
+    }
+
+    /* STATUS */
+    .status {
+      background: var(--surface2);
+      border-radius: var(--radius);
+      padding: .6rem .75rem;
+      font-size: 12px;
+      color: var(--text2);
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      border: 1px solid var(--border)
+    }
+
+    .status.ok {
+      background: var(--green-light);
+      color: var(--green);
+      border-color: #bbf7d0
+    }
+
+    .status.err {
+      background: #fef2f2;
+      color: var(--red);
+      border-color: #fecaca
+    }
+
+    .status.loading {
+      background: var(--purple-light);
+      color: var(--purple);
+      border-color: #ddd6fe
+    }
+
+    /* SECTION LABEL */
+    .slabel {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text3);
+      margin-bottom: .25rem
+    }
+
+    /* FIELD CARDS */
+    .field-card {
+      background: var(--surface2);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      padding: .65rem .75rem;
+      cursor: pointer;
+      transition: .15s
+    }
+
+    .field-card:hover {
+      border-color: var(--border2)
+    }
+
+    .field-card.active {
+      border-color: var(--blue);
+      background: var(--blue-light)
+    }
+
+    .field-top {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      margin-bottom: .4rem
+    }
+
+    .field-name {
+      font-size: 13px;
+      font-weight: 500;
+      flex: 1
+    }
+
+    .badge {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-weight: 600
+    }
+
+    .badge-ocr {
+      background: #dcfce7;
+      color: #15803d
+    }
+
+    .badge-manual {
+      background: #ede9fe;
+      color: #6d28d9
+    }
+
+    .field-coords {
+      font-size: 11px;
+      color: var(--text3)
+    }
+
+    .field-val {
+      width: 100%;
+      margin-top: .4rem;
+      padding: 4px 8px;
+      font-size: 12px;
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--text)
+    }
+
+    .field-val:focus {
+      outline: 2px solid var(--blue);
+      border-color: transparent
+    }
+
+    .field-actions {
+      display: flex;
+      gap: .4rem;
+      margin-top: .4rem
+    }
+
+    /* DETAIL PANEL */
+    .detail-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .5rem
+    }
+
+    .detail-group {
+      display: flex;
+      flex-direction: column;
+      gap: 3px
+    }
+
+    .detail-group label {
+      font-size: 11px;
+      color: var(--text3)
+    }
+
+    .detail-group input,
+    .detail-group select {
+      padding: 5px 7px;
+      font-size: 12px;
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--text)
+    }
+
+    .detail-group input[type=color] {
+      height: 32px;
+      padding: 2px;
+      cursor: pointer
+    }
+
+    /* JSON BOX */
+    .json-box {
+      background: #1e1e2e;
+      border-radius: var(--radius);
+      padding: .85rem;
+      font-family: 'Courier New', monospace;
+      font-size: 10.5px;
+      color: #cdd6f4;
+      max-height: 180px;
+      overflow-y: auto;
+      line-height: 1.5;
+      white-space: pre
+    }
+
+    .json-key {
+      color: #89b4fa
+    }
+
+    .json-str {
+      color: #a6e3a1
+    }
+
+    .json-num {
+      color: #fab387
+    }
+
+    /* DIVIDER */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: .25rem 0
+    }
+
+    /* SCROLL */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border2);
+      border-radius: 3px
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="app">
+
+    <!-- TOP BAR -->
+    <div class="topbar">
+      <div class="topbar-title">
+        <i class="ti ti-file-certificate"></i>
+        Editor PDF Inteligente
+      </div>
+      <div class="topbar-steps">
+        <div class="step active" id="step1"><i class="ti ti-upload"></i> Subir plantilla</div>
+        <span class="step-sep">›</span>
+        <div class="step" id="step2"><i class="ti ti-scan"></i> Detectar campos</div>
+        <span class="step-sep">›</span>
+        <div class="step" id="step3"><i class="ti ti-edit"></i> Ajustar y rellenar</div>
+        <span class="step-sep">›</span>
+        <div class="step" id="step4"><i class="ti ti-download"></i> Exportar</div>
+      </div>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-ghost btn-sm" onclick="resetAll()" title="Reiniciar"><i
+            class="ti ti-refresh"></i></button>
+      </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-body">
+
+        <!-- PASO 1: SUBIR -->
+        <div class="panel visible" id="panel1">
+          <div class="slabel">Plantilla PDF</div>
+          <div class="upload-zone" id="uploadZone" onclick="document.getElementById('pdfInput').click()">
+            <i class="ti ti-file-upload" id="uploadIcon"></i>
+            <p id="uploadText">Haz clic para subir tu PDF plantilla</p>
+            <p style="font-size:11px;color:var(--text3);margin-top:.25rem" id="uploadSub">o arrastra el archivo aquí</p>
+          </div>
+          <input type="file" id="pdfInput" accept=".pdf" style="display:none">
+
+          <div class="slabel" style="margin-top:.5rem">¿Qué quieres hacer?</div>
+          <button class="btn btn-ocr" id="btnOCR" onclick="goToOCR()" disabled>
+            <i class="ti ti-scan"></i> Detectar campos automáticamente (OCR)
+          </button>
+          <button class="btn btn-ghost" id="btnManualOnly" onclick="goToManual()" disabled>
+            <i class="ti ti-cursor-text"></i> Agregar campos manualmente
+          </button>
+
+          <div class="status" id="status1">
+            <i class="ti ti-info-circle"></i>
+            <span>Sube un PDF para continuar</span>
+          </div>
+        </div>
+
+        <!-- PASO 2: OCR EN CURSO -->
+        <div class="panel" id="panel2">
+          <div class="slabel">Analizando documento</div>
+          <div class="status loading" id="ocrStatus">
+            <i class="ti ti-loader"></i>
+            <span id="ocrMsg">Iniciando OCR...</span>
+          </div>
+          <div
+            style="background:var(--surface2);border-radius:var(--radius);padding:.75rem;font-size:12px;color:var(--text2);line-height:1.6">
+            El OCR busca líneas con el patrón:<br>
+            <code
+              style="background:var(--bg);padding:1px 5px;border-radius:3px;font-size:11px">Título: &nbsp;&nbsp;&nbsp;</code><br>
+            y detecta automáticamente dónde poner cada dato.
+          </div>
+          <div id="ocrProgress" style="display:flex;flex-direction:column;gap:.35rem"></div>
+        </div>
+
+        <!-- PASO 3: AJUSTAR CAMPOS -->
+        <div class="panel" id="panel3">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div class="slabel">Campos detectados</div>
+            <button class="btn btn-ghost btn-sm" onclick="addManualField()">
+              <i class="ti ti-plus"></i> Agregar
+            </button>
+          </div>
+
+          <div id="fieldList" style="display:flex;flex-direction:column;gap:.4rem"></div>
+
+          <!-- DETALLE DEL CAMPO SELECCIONADO -->
+          <div id="detailPanel" style="display:none">
+            <div class="divider"></div>
+            <div class="slabel">Ajustar campo seleccionado</div>
+            <div class="detail-row">
+              <div class="detail-group">
+                <label>Key / nombre</label>
+                <input id="dKey" type="text" oninput="updateSelectedField('key',this.value)">
+              </div>
+              <div class="detail-group">
+                <label>Página</label>
+                <input id="dPage" type="number" min="1" oninput="updateSelectedField('page',parseInt(this.value))">
+              </div>
+            </div>
+            <div class="detail-row" style="margin-top:.4rem">
+              <div class="detail-group">
+                <label>X (pts PDF)</label>
+                <input id="dX" type="number" step="0.5" oninput="updateSelectedFieldCoords('x',parseFloat(this.value))">
+              </div>
+              <div class="detail-group">
+                <label>Y (pts PDF)</label>
+                <input id="dY" type="number" step="0.5" oninput="updateSelectedFieldCoords('y',parseFloat(this.value))">
+              </div>
+            </div>
+            <div class="detail-row" style="margin-top:.4rem">
+              <div class="detail-group">
+                <label>Fuente</label>
+                <select id="dFont" onchange="updateSelectedField('font',this.value)">
+                  <option value="Helvetica">Helvetica</option>
+                  <option value="Times-Roman">Times Roman</option>
+                  <option value="Courier">Courier</option>
+                </select>
+              </div>
+              <div class="detail-group">
+                <label>Tamaño</label>
+                <input id="dSize" type="number" min="6" max="72"
+                  oninput="updateSelectedField('fontSize',parseInt(this.value))">
+              </div>
+            </div>
+            <div class="detail-row" style="margin-top:.4rem">
+              <div class="detail-group">
+                <label>Color</label>
+                <input id="dColor" type="color" onchange="updateSelectedField('color',this.value)">
+              </div>
+              <div class="detail-group">
+                <label>Estilo</label>
+                <div style="display:flex;align-items:center;gap:.4rem;margin-top:5px">
+                  <input id="dBold" type="checkbox" onchange="updateSelectedField('bold',this.checked)" style="width:auto;height:auto;cursor:pointer">
+                  <label for="dBold" style="color:var(--text);font-size:12px;cursor:pointer;margin:0;user-select:none">Negrita</label>
+                </div>
+              </div>
+            </div>
+            <div class="detail-row" style="margin-top:.4rem">
+              <div class="detail-group" style="grid-column: 1 / -1">
+                <label>Valor de prueba</label>
+                <input id="dVal" type="text" placeholder="ej: Juan Pérez"
+                  oninput="updateSelectedField('value',this.value)">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PASO 4: EXPORTAR -->
+        <div class="panel" id="panel4">
+          <div class="slabel">Resumen de campos</div>
+          <div id="summaryBox"
+            style="font-size:12px;color:var(--text2);background:var(--surface2);border-radius:var(--radius);padding:.75rem;line-height:1.7">
+          </div>
+
+          <div class="slabel" style="margin-top:.25rem">JSON generado</div>
+          <div class="json-box" id="jsonBox"></div>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-ghost btn-sm" onclick="copyJSON()"><i class="ti ti-copy"></i> Copiar JSON</button>
+            <button class="btn btn-ghost btn-sm" onclick="downloadJSON()"><i class="ti ti-brackets"></i> Descargar
+              .json</button>
+          </div>
+        </div>
+
+      </div><!-- /sidebar-body -->
+
+      <!-- FOOTER BUTTONS -->
+      <div class="sidebar-footer">
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-ghost" id="btnBack" onclick="goBack()" style="display:none">
+            <i class="ti ti-arrow-left"></i> Atrás
+          </button>
+          <button class="btn btn-primary" id="btnNext" onclick="goNext()" disabled>
+            Siguiente <i class="ti ti-arrow-right"></i>
+          </button>
+        </div>
+        <button class="btn btn-green" id="btnSave" onclick="saveFinalPDF()" style="display:none">
+          <i class="ti ti-download"></i> Guardar PDF final + JSON
+        </button>
+      </div>
+    </div><!-- /sidebar -->
+
+    <!-- CANVAS AREA -->
+    <div class="canvas-area" id="canvasArea">
+      <div class="empty-state" id="emptyState">
+        <i class="ti ti-file-search"></i>
+        <p>Sube tu PDF plantilla para comenzar</p>
+      </div>
+
+      <div id="pdfControls" style="display:none;flex-direction:column;align-items:center;gap:.6rem;width:100%">
+        <div style="display:flex;align-items:center;gap:1rem">
+          <div class="page-nav">
+            <button onclick="changePage(-1)"><i class="ti ti-chevron-left" style="font-size:13px"></i></button>
+            <span id="pageInfo">Pág. 1 / 1</span>
+            <button onclick="changePage(1)"><i class="ti ti-chevron-right" style="font-size:13px"></i></button>
+          </div>
+          <div class="zoom-controls">
+            <button onclick="changeZoom(-0.25)"><i class="ti ti-minus" style="font-size:12px"></i></button>
+            <span id="zoomLabel">100%</span>
+            <button onclick="changeZoom(0.25)"><i class="ti ti-plus" style="font-size:12px"></i></button>
+          </div>
+          <span style="color:rgba(255,255,255,.6);font-size:11.5px;background:rgba(255,255,255,0.08);padding:4px 12px;border-radius:20px;display:flex;align-items:center;gap:6px" id="tipDrag">
+            <i class="ti ti-info-circle" style="color:var(--blue);font-size:13px"></i>
+            <span>Arrastra para posicionar · <b>Doble clic en el PDF para agregar nuevos campos</b></span>
+          </span>
+        </div>
+
+        <div class="pdf-wrapper" id="pdfWrapper">
+          <canvas id="pdfCanvas"></canvas>
+          <div class="overlay" id="overlay"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- LIBS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    // ─── STATE ───────────────────────────────────────────────────────
+    let pdfDoc = null, pdfBytes = null;
+    let curPage = 1, totalPages = 0, scale = 1.5;
+    let fields = [], selId = null, fieldCnt = 0;
+    let dragging = null, dragOff = { x: 0, y: 0 }, dragEl = null;
+    let viewport = null, currentStep = 1;
+    let ocrWorker = null, pdfName = 'plantilla';
+
+    // ─── UPLOAD ───────────────────────────────────────────────────────
+    const pdfInput = document.getElementById('pdfInput');
+    const uploadZone = document.getElementById('uploadZone');
+
+    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.style.borderColor = 'var(--blue)'; });
+    uploadZone.addEventListener('dragleave', () => { uploadZone.style.borderColor = ''; });
+    uploadZone.addEventListener('drop', e => {
+      e.preventDefault();
+      const f = e.dataTransfer.files[0];
+      if (f && f.type === 'application/pdf') handlePDFFile(f);
+    });
+
+    pdfInput.onchange = e => { if (e.target.files[0]) handlePDFFile(e.target.files[0]); };
+
+    async function handlePDFFile(file) {
+      pdfName = file.name.replace('.pdf', '');
+      const buf = await file.arrayBuffer();
+      pdfBytes = new Uint8Array(buf);
+      pdfDoc = await pdfjsLib.getDocument({ data: buf.slice(0) }).promise;
+      totalPages = pdfDoc.numPages;
+      curPage = 1;
+
+      uploadZone.classList.add('loaded');
+      document.getElementById('uploadIcon').className = 'ti ti-circle-check';
+      document.getElementById('uploadText').textContent = file.name;
+      document.getElementById('uploadSub').textContent = `${totalPages} página(s) · ${(file.size / 1024).toFixed(0)} KB`;
+
+      document.getElementById('btnOCR').disabled = false;
+      document.getElementById('btnManualOnly').disabled = false;
+      document.getElementById('btnNext').disabled = false;
+      setStatus1('ok', `PDF cargado: ${totalPages} página(s)`);
+
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('pdfControls').style.display = 'flex';
+      renderPage();
+    }
+
+    function setStatus1(type, msg) {
+      const s = document.getElementById('status1');
+      s.className = 'status ' + (type === 'ok' ? 'ok' : type === 'err' ? 'err' : '');
+      s.innerHTML = `<i class="ti ti-${type === 'ok' ? 'circle-check' : type === 'err' ? 'alert-triangle' : 'info-circle'}"></i><span>${msg}</span>`;
+    }
+
+    // ─── STEP NAVIGATION ──────────────────────────────────────────────
+    function setStep(n) {
+      currentStep = n;
+      [1, 2, 3, 4].forEach(i => {
+        const panel = document.getElementById('panel' + i);
+        panel.classList.toggle('visible', i === n);
+        const stepEl = document.getElementById('step' + i);
+        stepEl.className = 'step' + (i === n ? ' active' : i < n ? ' done' : '');
+        if (i < n) stepEl.innerHTML = `<i class="ti ti-check"></i> ${stepEl.textContent.trim()}`;
+      });
+      document.getElementById('btnBack').style.display = n > 1 ? 'flex' : 'none';
+      document.getElementById('btnNext').style.display = n < 4 ? 'flex' : 'none';
+      document.getElementById('btnSave').style.display = n === 4 ? 'flex' : 'none';
+      document.getElementById('btnNext').disabled = (n === 1 && !pdfDoc) || (n === 3 && fields.length === 0);
+    }
+
+    function goNext() {
+      if (currentStep === 1) { setStep(3); renderFieldList(); }
+      else if (currentStep === 3) { setStep(4); buildExportPanel(); }
+    }
+
+    function goBack() {
+      if (currentStep === 4) setStep(3);
+      else if (currentStep === 3) setStep(1);
+      else if (currentStep === 2) setStep(1);
+    }
+
+    function goToOCR() { setStep(2); runOCR(); }
+    function goToManual() { setStep(3); renderFieldList(); renderMarkers(); }
+
+    function resetAll() {
+      if (!confirm('¿Reiniciar todo?')) return;
+      pdfDoc = null; pdfBytes = null; fields = []; selId = null; fieldCnt = 0;
+      document.getElementById('emptyState').style.display = 'flex';
+      document.getElementById('pdfControls').style.display = 'none';
+      uploadZone.classList.remove('loaded');
+      document.getElementById('uploadIcon').className = 'ti ti-file-upload';
+      document.getElementById('uploadText').textContent = 'Haz clic para subir tu PDF plantilla';
+      document.getElementById('uploadSub').textContent = 'o arrastra el archivo aquí';
+      document.getElementById('btnOCR').disabled = true;
+      document.getElementById('btnManualOnly').disabled = true;
+      document.getElementById('btnNext').disabled = true;
+      pdfInput.value = '';
+      setStatus1('', 'Sube un PDF para continuar');
+      setStep(1);
+    }
+
+    // ─── PDF RENDER ───────────────────────────────────────────────────
+    async function renderPage() {
+      if (!pdfDoc) return;
+      const page = await pdfDoc.getPage(curPage);
+      viewport = page.getViewport({ scale });
+      const c = document.getElementById('pdfCanvas');
+      c.width = viewport.width; c.height = viewport.height;
+      const ov = document.getElementById('overlay');
+      ov.style.width = viewport.width + 'px';
+      ov.style.height = viewport.height + 'px';
+      await page.render({ canvasContext: c.getContext('2d'), viewport }).promise;
+      document.getElementById('pageInfo').textContent = `Pág. ${curPage} / ${totalPages}`;
+      document.getElementById('zoomLabel').textContent = Math.round(scale / 1.5 * 100) + '%';
+      renderMarkers();
+    }
+
+    function changePage(d) {
+      const n = curPage + d;
+      if (n < 1 || n > totalPages) return;
+      curPage = n; renderPage();
+    }
+
+    function changeZoom(d) {
+      scale = Math.max(0.5, Math.min(3, scale + d));
+      renderPage();
+    }
+
+    // ─── OCR ──────────────────────────────────────────────────────────
+    async function runOCR() {
+      setOcrStatus('loading', 'Iniciando motor OCR...');
+      const prog = document.getElementById('ocrProgress');
+      prog.innerHTML = '';
+      fields = [];
+
+      try {
+        if (!ocrWorker) {
+          setOcrStatus('loading', 'Cargando OCR (primera vez puede tardar ~15s)...');
+          ocrWorker = await Tesseract.createWorker('spa+eng');
+        }
+
+        for (let p = 1; p <= totalPages; p++) {
+          setOcrStatus('loading', `Analizando página ${p} de ${totalPages}...`);
+          addProgLine(`📄 Página ${p}...`);
+
+          const page = await pdfDoc.getPage(p);
+          const vp = page.getViewport({ scale: 2.5 });
+          const oc = document.createElement('canvas');
+          oc.width = vp.width; oc.height = vp.height;
+          await page.render({ canvasContext: oc.getContext('2d'), viewport: vp }).promise;
+
+          const { data } = await ocrWorker.recognize(oc);
+          const lines = data.lines || [];
+          let found = 0;
+
+          // Obtener tamaño real de página en pts
+          const realVp = page.getViewport({ scale: 1 });
+          const pageH = realVp.height;
+
+          for (const line of lines) {
+            const txt = line.text.replace(/\n/g, '').trim();
+            // Patrón: "Texto con palabras: " — permite mayúsculas, tildes, etc.
+            const match = txt.match(/^([A-Za-záéíóúüñÁÉÍÓÚÜÑ][A-Za-záéíóúüñÁÉÍÓÚÜÑ0-9 \.\-\/]{1,58}):\s*(.{0,50})$/);
+            if (!match) continue;
+            const label = match[1].trim();
+            const afterColon = match[2].trim();
+            if (afterColon.length > 45) continue; // ya tiene contenido largo, no es campo vacío
+            if (label.split(' ').length > 8) continue; // demasiadas palabras, probablemente oración
+
+            fieldCnt++;
+            const key = label.toLowerCase()
+              .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+              .replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+
+            const bb = line.bbox;
+            const ocrScale = 2.5;
+
+            // Posición canvas: justo después del ":" — estimamos ~60% del ancho de la línea
+            const canvasX = (bb.x0 + (bb.x1 - bb.x0) * 0.65) / ocrScale * scale;
+            const canvasY = (bb.y0 + (bb.y1 - bb.y0) * 0.15) / ocrScale * scale;
+
+            // Posición PDF real (pts, origen abajo-izquierda)
+            const pdfX = (bb.x0 + (bb.x1 - bb.x0) * 0.65) / ocrScale;
+            const pdfY = pageH - (bb.y1 / ocrScale);
+
+            fields.push({
+              id: 'f' + fieldCnt,
+              key, label,
+              value: '',
+              page: p,
+              canvasX, canvasY,
+              pdfX: Math.round(pdfX * 10) / 10,
+              pdfY: Math.round(pdfY * 10) / 10,
+              font: 'Helvetica',
+              fontSize: 11,
+              color: '#000000',
+              source: 'ocr',
+              bold: false
+            });
+            found++;
+          }
+          addProgLine(`   ✓ ${found} campo(s) encontrado(s)`);
+        }
+
+        if (fields.length === 0) {
+          setOcrStatus('err', 'No se encontraron campos con patrón "Título:". Agrega manualmente.');
+        } else {
+          setOcrStatus('ok', `${fields.length} campo(s) detectado(s) en ${totalPages} página(s)`);
+        }
+        setTimeout(() => { setStep(3); renderFieldList(); renderMarkers(); }, 800);
+
+      } catch (err) {
+        setOcrStatus('err', 'Error: ' + err.message);
+      }
+    }
+
+    function setOcrStatus(type, msg) {
+      const s = document.getElementById('ocrStatus');
+      s.className = 'status ' + type;
+      const icons = { loading: 'ti-loader', ok: 'ti-circle-check', err: 'ti-alert-triangle' };
+      s.innerHTML = `<i class="ti ${icons[type]}"></i><span id="ocrMsg">${msg}</span>`;
+    }
+
+    function addProgLine(txt) {
+      const d = document.createElement('div');
+      d.style.cssText = 'font-size:11px;color:var(--text2);padding:2px 0';
+      d.textContent = txt;
+      document.getElementById('ocrProgress').appendChild(d);
+    }
+
+    // ─── FIELD LIST ───────────────────────────────────────────────────
+    function renderFieldList() {
+      const fl = document.getElementById('fieldList');
+      fl.innerHTML = '';
+      if (fields.length === 0) {
+        fl.innerHTML = '<p style="font-size:12px;color:var(--text3);text-align:center;padding:.75rem">Sin campos. Agrega uno con el botón +</p>';
+        document.getElementById('btnNext').disabled = true;
+        document.getElementById('detailPanel').style.display = 'none';
+        return;
+      }
+      document.getElementById('btnNext').disabled = false;
+      fields.forEach(f => {
+        const d = document.createElement('div');
+        d.className = 'field-card' + (selId === f.id ? ' active' : '');
+        d.onclick = () => selectField(f.id);
+        d.innerHTML = `
+      <div class="field-top">
+        <i class="ti ${f.source === 'ocr' ? 'ti-scan' : 'ti-cursor-text'}" style="font-size:13px;color:${f.source === 'ocr' ? 'var(--green)' : 'var(--purple)'}"></i>
+        <span class="field-name">${f.label}</span>
+        <span class="badge badge-${f.source === 'ocr' ? 'ocr' : 'manual'}">${f.source === 'ocr' ? 'OCR' : 'manual'}</span>
+        <span style="font-size:11px;color:var(--text3);margin-left:.25rem">p.${f.page}</span>
+        <button onclick="event.stopPropagation();removeField('${f.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0;margin-left:auto" title="Eliminar"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="field-coords">key: <b>${f.key}</b> · x:${f.pdfX.toFixed(1)} y:${f.pdfY.toFixed(1)}</div>
+      <input class="field-val" placeholder="Valor de prueba (opcional)..." value="${f.value}"
+        oninput="updateVal('${f.id}',this.value)" onclick="event.stopPropagation()">
+    `;
+        fl.appendChild(d);
+      });
+    }
+
+    function selectField(id) {
+      selId = id;
+      renderFieldList();
+      renderMarkers();
+      const f = fields.find(f => f.id === id);
+      if (!f) { document.getElementById('detailPanel').style.display = 'none'; return; }
+      document.getElementById('detailPanel').style.display = 'block';
+      document.getElementById('dKey').value = f.key;
+      document.getElementById('dPage').value = f.page;
+      document.getElementById('dX').value = f.pdfX.toFixed(1);
+      document.getElementById('dY').value = f.pdfY.toFixed(1);
+      document.getElementById('dFont').value = f.font;
+      document.getElementById('dSize').value = f.fontSize;
+      document.getElementById('dColor').value = f.color;
+      document.getElementById('dBold').checked = !!f.bold;
+      document.getElementById('dVal').value = f.value;
+      // navegar a la página del campo
+      if (f.page !== curPage) { curPage = f.page; renderPage(); }
+    }
+
+    function updateSelectedField(prop, val) {
+      const f = fields.find(f => f.id === selId); if (!f) return;
+      f[prop] = val;
+      renderFieldList(); renderMarkers();
+    }
+
+    function updateSelectedFieldCoords(axis, val) {
+      const f = fields.find(f => f.id === selId); if (!f || isNaN(val)) return;
+      f['pdf' + axis.toUpperCase()] = val;
+      if (viewport) {
+        if (axis === 'x') f.canvasX = val * scale;
+        else f.canvasY = (viewport.height / scale - val - f.fontSize) * scale;
+      }
+      renderMarkers();
+    }
+
+    function updateVal(id, v) {
+      const f = fields.find(f => f.id === id); if (!f) return;
+      f.value = v;
+      if (selId === id) document.getElementById('dVal').value = v;
+      renderMarkers();
+    }
+
+    function removeField(id) {
+      fields = fields.filter(f => f.id !== id);
+      if (selId === id) { selId = null; document.getElementById('detailPanel').style.display = 'none'; }
+      renderFieldList(); renderMarkers();
+    }
+
+    function addManualField() {
+      fieldCnt++;
+      const id = 'f' + fieldCnt;
+      // posicionar en centro visible del canvas
+      const cx = viewport ? viewport.width / 2 : 200;
+      const cy = viewport ? viewport.height / scale / 2 : 200; // Mejor centrado vertical
+      const px = viewport ? cx / scale : 100;
+      const py = viewport ? viewport.height / scale - cy - 11 : 400;
+      fields.push({
+        id, key: 'campo_' + fieldCnt, label: 'Campo ' + fieldCnt,
+        value: '', page: curPage,
+        canvasX: cx, canvasY: cy * scale,
+        pdfX: Math.round(px * 10) / 10, pdfY: Math.round(py * 10) / 10,
+        font: 'Helvetica', fontSize: 11, color: '#000000', source: 'manual',
+        bold: false
+      });
+      selId = id;
+      renderFieldList(); renderMarkers(); selectField(id);
+      document.getElementById('btnNext').disabled = false;
+    }
+
+    // ─── MARKERS ──────────────────────────────────────────────────────
+    function renderMarkers() {
+      const ov = document.getElementById('overlay');
+      ov.innerHTML = '';
+      fields.filter(f => f.page === curPage).forEach(f => {
+        const el = document.createElement('div');
+        el.className = `marker src-${f.source}${selId === f.id ? ' selected' : ''}`;
+        el.style.left = f.canvasX + 'px';
+        el.style.top = f.canvasY + 'px';
+        el.dataset.id = f.id;
+        
+        const fontFam = f.font === 'Times-Roman' ? "'Times New Roman', Times, serif" : f.font === 'Courier' ? "'Courier New', Courier, monospace" : "Arial, Helvetica, sans-serif";
+        const fontWt = f.bold ? 'bold' : 'normal';
+        
+        el.innerHTML = `
+      <div class="marker-label">${f.label}</div>
+      <div class="marker-content" style="font-size:${f.fontSize * scale}px;color:${f.color};font-family:${fontFam};font-weight:${fontWt}">${f.value || '_____________'}</div>
+    `;
+        el.addEventListener('mousedown', e => {
+          e.preventDefault();
+          e.stopPropagation();
+          dragging = f.id;
+          dragEl = el;
+          const r = el.getBoundingClientRect();
+          dragOff = { x: e.clientX - r.left, y: e.clientY - r.top };
+          // Seleccionar sin rerenderizar marcadores
+          selId = f.id;
+          // Actualizar estilos de selección directamente en DOM
+          document.querySelectorAll('.marker').forEach(m => {
+            m.classList.remove('selected');
+          });
+          el.classList.add('selected');
+          // Actualizar sidebar sin tocar el overlay
+          renderFieldList();
+          const ff = fields.find(ff => ff.id === f.id);
+          if (ff) {
+            document.getElementById('detailPanel').style.display = 'block';
+            document.getElementById('dKey').value = ff.key;
+            document.getElementById('dPage').value = ff.page;
+            document.getElementById('dX').value = ff.pdfX.toFixed(1);
+            document.getElementById('dY').value = ff.pdfY.toFixed(1);
+            document.getElementById('dFont').value = ff.font;
+            document.getElementById('dSize').value = ff.fontSize;
+            document.getElementById('dColor').value = ff.color;
+            document.getElementById('dBold').checked = !!ff.bold;
+            document.getElementById('dVal').value = ff.value;
+          }
+        });
+        ov.appendChild(el);
+      });
+    }
+
+    document.addEventListener('mousemove', e => {
+      if (!dragging || !viewport || !dragEl) return;
+      const wr = document.getElementById('pdfWrapper').getBoundingClientRect();
+      const nx = Math.max(0, Math.min(viewport.width - 10, e.clientX - wr.left - dragOff.x));
+      const ny = Math.max(0, Math.min(viewport.height - 10, e.clientY - wr.top - dragOff.y));
+      // Mover el elemento DOM directamente — sin recrearlo
+      dragEl.style.left = nx + 'px';
+      dragEl.style.top = ny + 'px';
+      // Actualizar estado en memoria
+      const f = fields.find(f => f.id === dragging); if (!f) return;
+      f.canvasX = nx; f.canvasY = ny;
+      f.pdfX = Math.round(nx / scale * 10) / 10;
+      f.pdfY = Math.round((viewport.height / scale - ny / scale - f.fontSize) * 10) / 10;
+      // Actualizar inputs de coordenadas en tiempo real
+      const dxEl = document.getElementById('dX');
+      const dyEl = document.getElementById('dY');
+      if (dxEl) dxEl.value = f.pdfX.toFixed(1);
+      if (dyEl) dyEl.value = f.pdfY.toFixed(1);
+      // Actualizar coordenadas en la card del sidebar
+      document.querySelectorAll('.field-card').forEach(c => {
+        if (c.querySelector('.field-name') && c.querySelector('.field-name').textContent === f.label) {
+          const coordEl = c.querySelector('.field-coords');
+          if (coordEl) coordEl.innerHTML = `key: <b>${f.key}</b> · x:${f.pdfX.toFixed(1)} y:${f.pdfY.toFixed(1)}`;
+        }
+      });
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (dragging) {
+        dragging = null;
+        dragEl = null;
+      }
+    });
+
+    document.getElementById('overlay').addEventListener('dblclick', e => {
+      if (currentStep !== 3) return;
+      if (e.target.closest('.marker')) return;
+
+      const wr = document.getElementById('pdfWrapper').getBoundingClientRect();
+      const cx = e.clientX - wr.left;
+      const cy = e.clientY - wr.top;
+
+      const px = cx / scale;
+      const py = viewport.height / scale - cy / scale - 11;
+
+      fieldCnt++;
+      const id = 'f' + fieldCnt;
+      fields.push({
+        id, key: 'campo_' + fieldCnt, label: 'Campo ' + fieldCnt,
+        value: '', page: curPage,
+        canvasX: cx, canvasY: cy,
+        pdfX: Math.round(px * 10) / 10, pdfY: Math.round(py * 10) / 10,
+        font: 'Helvetica', fontSize: 11, color: '#000000', source: 'manual',
+        bold: false
+      });
+
+      selId = id;
+      renderFieldList();
+      renderMarkers();
+      selectField(id);
+
+      setTimeout(() => {
+        const activeCard = document.querySelector('.field-card.active');
+        if (activeCard) {
+          activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 50);
+    });
+
+    // ─── EXPORT PANEL ────────────────────────────────────────────────
+    function buildExportPanel() {
+      const ocrCount = fields.filter(f => f.source === 'ocr').length;
+      const manCount = fields.filter(f => f.source === 'manual').length;
+      document.getElementById('summaryBox').innerHTML = `
+    <b>${fields.length} campo(s) en total</b><br>
+    🟢 ${ocrCount} detectados por OCR &nbsp;·&nbsp; 🟣 ${manCount} agregados manualmente<br>
+    Páginas con campos: ${[...new Set(fields.map(f => f.page))].sort().join(', ')}<br><br>
+    <span style="color:var(--text3)">Rellena los valores antes de guardar, o deja vacíos y usa el JSON para tu bot.</span>
+  `;
+      const jsonData = buildJSON();
+      document.getElementById('jsonBox').textContent = JSON.stringify(jsonData, null, 2);
+    }
+
+    function buildJSON() {
+      return {
+        template_name: pdfName,
+        generated_at: new Date().toISOString().split('T')[0],
+        total_pages: totalPages,
+        fields: fields.map(f => ({
+          key: f.key,
+          label: f.label,
+          page: f.page,
+          x: f.pdfX,
+          y: f.pdfY,
+          font: f.font,
+          font_size: f.fontSize,
+          color: f.color,
+          bold: !!f.bold,
+          source: f.source
+        }))
+      };
+    }
+
+    function copyJSON() {
+      navigator.clipboard.writeText(JSON.stringify(buildJSON(), null, 2));
+      const btn = event.target.closest('button');
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<i class="ti ti-check"></i> ¡Copiado!';
+      setTimeout(() => btn.innerHTML = orig, 2000);
+    }
+
+    function downloadJSON() {
+      const blob = new Blob([JSON.stringify(buildJSON(), null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = pdfName + '_campos.json';
+      a.click();
+    }
+
+    // ─── SAVE FINAL PDF ───────────────────────────────────────────────
+    async function saveFinalPDF() {
+      if (!pdfBytes) return;
+      const btn = document.getElementById('btnSave');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ti ti-loader"></i> Generando PDF...';
+
+      try {
+        const { PDFDocument, rgb, StandardFonts } = PDFLib;
+
+        // Cargar bytes ORIGINALES — conserva todo: imágenes, diseño, metadata
+        const doc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+        const pages = doc.getPages();
+
+        // Embeber fuentes necesarias (normales y negritas si es requerido)
+        const fontCache = {};
+        for (const f of fields) {
+          const fn = f.font;
+          const isBold = !!f.bold;
+          const key = fn + (isBold ? '-Bold' : '');
+          if (!fontCache[key]) {
+            let sfn;
+            if (fn === 'Courier') {
+              sfn = isBold ? StandardFonts.CourierBold : StandardFonts.Courier;
+            } else if (fn === 'Times-Roman') {
+              sfn = isBold ? StandardFonts.TimesRomanBold : StandardFonts.TimesRoman;
+            } else {
+              sfn = isBold ? StandardFonts.HelveticaBold : StandardFonts.Helvetica;
+            }
+            fontCache[key] = await doc.embedFont(sfn);
+          }
+        }
+
+        // Escribir cada campo
+        for (const f of fields) {
+          if (!f.value) continue;
+          const pg = pages[f.page - 1]; if (!pg) continue;
+          const hex = f.color.replace('#', '');
+          const r = parseInt(hex.substr(0, 2), 16) / 255;
+          const g = parseInt(hex.substr(2, 2), 16) / 255;
+          const b = parseInt(hex.substr(4, 2), 16) / 255;
+          const fontKey = f.font + (f.bold ? '-Bold' : '');
+          pg.drawText(String(f.value), {
+            x: f.pdfX,
+            y: f.pdfY,
+            size: f.fontSize,
+            font: fontCache[fontKey],
+            color: rgb(r, g, b)
+          });
+        }
+
+        // Guardar con configuración que preserva calidad
+        const outBytes = await doc.save({
+          useObjectStreams: false  // máxima compatibilidad, preserva estructura original
+        });
+
+        // Descargar PDF
+        const pdfBlob = new Blob([outBytes], { type: 'application/pdf' });
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        const a1 = document.createElement('a');
+        a1.href = pdfUrl; a1.download = pdfName + '_completado.pdf'; a1.click();
+
+        // Descargar JSON automáticamente también
+        setTimeout(() => {
+          const jBlob = new Blob([JSON.stringify(buildJSON(), null, 2)], { type: 'application/json' });
+          const a2 = document.createElement('a');
+          a2.href = URL.createObjectURL(jBlob);
+          a2.download = pdfName + '_campos.json'; a2.click();
+        }, 500);
+
+        btn.innerHTML = '<i class="ti ti-circle-check"></i> ¡Guardado! PDF + JSON descargados';
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="ti ti-download"></i> Guardar PDF final + JSON';
+        }, 3000);
+
+      } catch (err) {
+        alert('Error al guardar: ' + err.message);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ti ti-download"></i> Guardar PDF final + JSON';
+      }
+    }
+  </script>
+</body>
+
+</html>
