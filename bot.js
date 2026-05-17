@@ -4,6 +4,7 @@ const QRCode = require('qrcode');
 const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
+const zlib = require('zlib');
 const bwipjs = require('bwip-js');
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const fontkit = require('@pdf-lib/fontkit');
@@ -67,9 +68,9 @@ bot.on('callback_query', async (query) => {
             bot.sendMessage(chatId, `❌ Error: ${e.message}`);
         }
     } else if (data === "gen_tive_completo") {
-        bot.editMessageText(`🧠 *Generando TIVE COMPLETO...*`, { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' });
+        bot.editMessageText(`📄 *Extrayendo datos para TIVE COMPLETO...*`, { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' });
         try {
-            const datos = await extraerConIA(buffer);
+            const datos = extraerTiveCompletoConLibreria(buffer);
             await iniciarCapturaFaltantesTiveCompleto(chatId, datos);
         } catch (e) {
             bot.sendMessage(chatId, `❌ Error: ${e.message}`);
@@ -246,6 +247,132 @@ function valorCompleto(datos, dataKey) {
     const value = datos[dataKey];
     if (value === undefined || value === null) return '';
     return String(value).trim();
+}
+
+function extraerTextoPdfTive(pdfBuffer) {
+    const pdfBytes = Buffer.isBuffer(pdfBuffer) ? pdfBuffer : Buffer.from(pdfBuffer);
+    const chunks = [];
+    const objectRegex = /(\d+)\s+0\s+obj\s*<<(.*?)>>\s*stream\r?\n/gs;
+    let match;
+
+    while ((match = objectRegex.exec(pdfBytes.toString('latin1'))) !== null) {
+        const dictionary = match[2];
+        const start = match.index + match[0].length;
+        const end = pdfBytes.indexOf(Buffer.from('endstream'), start);
+        if (end < 0) continue;
+
+        const rawStream = pdfBytes.subarray(start, end);
+        const trimmedStream = rawStream.toString('latin1').replace(/[\r\n]+$/g, '');
+        let dataBuffer = Buffer.from(trimmedStream, 'latin1');
+
+        if (dictionary.includes('/FlateDecode')) {
+            try {
+                dataBuffer = zlib.inflateSync(dataBuffer);
+            } catch (_) {
+                continue;
+            }
+        }
+
+        const streamText = dataBuffer.toString('latin1');
+        const textRegex = /\((.*?)\)\s*Tj/gs;
+        let textMatch;
+        while ((textMatch = textRegex.exec(streamText)) !== null) {
+            const text = textMatch[1]
+                .replace(/\\\(/g, '(')
+                .replace(/\\\)/g, ')')
+                .replace(/\\\\/g, '\\');
+            chunks.push(text);
+        }
+    }
+
+    return chunks.join('\n');
+}
+
+function normalizarTextoBusqueda(texto = '') {
+    return safe(texto)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function buscarValorTive(texto, etiqueta) {
+    const escaped = etiqueta.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`${escaped}\\s+([^\\n]+)`, 'i');
+    const match = regex.exec(texto);
+    return match ? safe(match[1]) : '';
+}
+
+function buscarTituloNumeroTive(texto) {
+    const lines = texto.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    for (let i = 0; i < lines.length; i++) {
+        if (normalizarTextoBusqueda(lines[i]).toLowerCase() === 'titulo nro' && i > 0) {
+            return safe(lines[i - 1]);
+        }
+    }
+    return '';
+}
+
+function buscarTituloValorTive(texto) {
+    const lines = texto.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    for (const line of lines) {
+        const normalized = normalizarTextoBusqueda(line).toLowerCase();
+        if (normalized.startsWith('titulo ') && normalized !== 'titulo nro') {
+            return safe(line.split(/\s+/, 2)[1]);
+        }
+    }
+    return '';
+}
+
+function extraerTiveCompletoConLibreria(pdfBuffer) {
+    console.log(`[TIVE COMPLETO] 📄 Extrayendo con libreria (Buffer size: ${pdfBuffer.length} bytes)...`);
+    const text = extraerTextoPdfTive(pdfBuffer);
+    if (!safe(text)) {
+        throw new Error('No se pudo leer texto del PDF. Asegúrate de que sea un TIVE electrónico con texto embebido.');
+    }
+
+    const fechaTitulo = buscarValorTive(text, 'Fecha');
+    const datos = {
+        codVerif: '',
+        fechaFinal: fechaTitulo,
+        zona: '',
+        sede: '',
+        partida: buscarValorTive(text, 'Partida'),
+        dua: '',
+        titulo: buscarTituloValorTive(text),
+        fechaTitulo: fechaTitulo ? fechaTitulo.split(/\s+/)[0] : '',
+        categoria: buscarValorTive(text, 'Categoria'),
+        marca: buscarValorTive(text, 'Marca'),
+        modelo: buscarValorTive(text, 'Modelo'),
+        color: buscarValorTive(text, 'Color'),
+        vin: buscarValorTive(text, 'Nro. VIN'),
+        serie: buscarValorTive(text, 'Nro. Serie'),
+        motor: buscarValorTive(text, 'Nro. Motor'),
+        carroceria: buscarValorTive(text, 'Tipo Carroceria') || buscarValorTive(text, 'Tipo Carrocería'),
+        potencia: buscarValorTive(text, 'Potencia Motor'),
+        formRod: buscarValorTive(text, 'Formula Rodante') || buscarValorTive(text, 'Fórmula Rodante'),
+        combustible: buscarValorTive(text, 'Tipo Combustible'),
+        asientos: buscarValorTive(text, 'Nro. Asientos'),
+        pasajeros: buscarValorTive(text, 'Nro. Pasajeros'),
+        ruedas: buscarValorTive(text, 'Nro. Ruedas'),
+        ejes: buscarValorTive(text, 'Nro. Ejes'),
+        placa: buscarValorTive(text, 'Placa :'),
+        añoFabricacion: buscarValorTive(text, 'Año Fabricación') || buscarValorTive(text, 'Ano Fabricacion'),
+        cilindros: buscarValorTive(text, 'Nro. Cilindros'),
+        longitud: buscarValorTive(text, 'Longitud'),
+        altura: buscarValorTive(text, 'Altura'),
+        ancho: buscarValorTive(text, 'Ancho'),
+        cilindrada: buscarValorTive(text, 'Cilindrada'),
+        pBruto: buscarValorTive(text, 'Peso Bruto'),
+        pNeto: buscarValorTive(text, 'Peso Neto'),
+        cargaUtil: buscarValorTive(text, 'Carga Util'),
+        version: buscarValorTive(text, 'Nro. Version') || buscarValorTive(text, 'Nro. Versión'),
+        añoModelo: buscarValorTive(text, 'Año Modelo') || buscarValorTive(text, 'Ano Modelo'),
+        tituloNo: buscarTituloNumeroTive(text),
+    };
+
+    console.log(`[TIVE COMPLETO] ✅ Extracción por librería lista. Placa encontrada: ${datos.placa || '(vacía)'}`);
+    return datos;
 }
 
 const TIVE_COMPLETO_REQUIRED_FIELDS = [
