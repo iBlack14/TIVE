@@ -324,6 +324,14 @@ function buscarTituloValorTive(texto) {
     return '';
 }
 
+function normalizarTituloDesdeTituloNo(tituloNo = '') {
+    const limpio = safe(tituloNo).replace(/\s+/g, '');
+    if (!limpio) return '';
+    const match = limpio.match(/^(\d+)-(\d+)$/);
+    if (!match) return limpio;
+    return `${match[2]}-${match[1]}`;
+}
+
 function extraerTiveCompletoConLibreria(pdfBuffer) {
     console.log(`[TIVE COMPLETO] 📄 Extrayendo con libreria (Buffer size: ${pdfBuffer.length} bytes)...`);
     const text = extraerTextoPdfTive(pdfBuffer);
@@ -332,6 +340,8 @@ function extraerTiveCompletoConLibreria(pdfBuffer) {
     }
 
     const fechaTitulo = buscarValorTive(text, 'Fecha');
+    const tituloNo = buscarTituloNumeroTive(text);
+    const tituloNormalizado = normalizarTituloDesdeTituloNo(tituloNo);
     const datos = {
         codVerif: '',
         fechaFinal: fechaTitulo,
@@ -339,7 +349,7 @@ function extraerTiveCompletoConLibreria(pdfBuffer) {
         sede: '',
         partida: buscarValorTive(text, 'Partida'),
         dua: '',
-        titulo: buscarTituloValorTive(text),
+        titulo: tituloNormalizado || buscarTituloValorTive(text),
         fechaTitulo: fechaTitulo ? fechaTitulo.split(/\s+/)[0] : '',
         categoria: buscarValorTive(text, 'Categoria'),
         marca: buscarValorTive(text, 'Marca'),
@@ -368,7 +378,7 @@ function extraerTiveCompletoConLibreria(pdfBuffer) {
         cargaUtil: buscarValorTive(text, 'Carga Util'),
         version: buscarValorTive(text, 'Nro. Version') || buscarValorTive(text, 'Nro. Versión'),
         añoModelo: buscarValorTive(text, 'Año Modelo') || buscarValorTive(text, 'Ano Modelo'),
-        tituloNo: buscarTituloNumeroTive(text),
+        tituloNo,
     };
 
     console.log(`[TIVE COMPLETO] ✅ Extracción por librería lista. Placa encontrada: ${datos.placa || '(vacía)'}`);
@@ -832,7 +842,7 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null) {
         paddingwidth: 0,
         paddingheight: 0,
     }));
-    page.drawImage(pdf417Img, { x: 65, y: 29, width: 260, height: 42 });
+    page.drawImage(pdf417Img, { x: 60, y: 10, width: 260, height: 42 });
 
     const outBytes = await pdfDoc.save();
     const fileName = `TIVE_COMPLETO_${qrHeaderText || 'DOC'}.pdf`;
