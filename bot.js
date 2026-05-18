@@ -341,7 +341,30 @@ function buscarValorTive(texto, etiqueta) {
     const escaped = etiqueta.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(`${escaped}\\s+([^\\n]+)`, 'i');
     const match = regex.exec(texto);
-    return match ? safe(match[1]) : '';
+    if (match) return safe(match[1]);
+
+    const labelNormalizado = normalizarTextoBusqueda(etiqueta)
+        .toLowerCase()
+        .replace(/\s*:\s*$/, '');
+    const lines = texto.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const lineNormalizada = normalizarTextoBusqueda(line).toLowerCase();
+        const lineSinDosPuntos = lineNormalizada.replace(/\s*:\s*$/, '');
+
+        if (lineSinDosPuntos === labelNormalizado) {
+            return safe(lines[i + 1] || '');
+        }
+
+        if (lineNormalizada.startsWith(`${labelNormalizado} `) || lineNormalizada.startsWith(`${labelNormalizado}:`)) {
+            const value = line.slice(Math.min(line.length, etiqueta.length)).replace(/^[:\s]+/, '');
+            if (safe(value)) return safe(value);
+            return safe(lines[i + 1] || '');
+        }
+    }
+
+    return '';
 }
 
 function normalizarValorNumerico(valor = '') {
