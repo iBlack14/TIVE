@@ -212,7 +212,7 @@ const TIVE_COMPLETO_FIELDS = [
     { key: 'carroceria', dataKey: 'carroceria', x: 104.5, y: 178.6, dx: -4, dy: -8, size: 8, bold: false },
     { key: 'potencia', dataKey: 'potencia', x: 99.6, y: 164, dx: -4, dy: -8, size: 8, bold: false },
     { key: 'form_rod', dataKey: 'formRod', x: 107.6, y: 150.7, dx: -6, dy: -7, size: 8, bold: false },
-    { key: 'combusble', dataKey: 'combustible', x: 108.6, y: 138.4, dx: -6, dy: -8, size: 8, bold: false },
+    { key: 'combusble', dataKey: 'combustible', x: 108.6, y: 138.4, dx: -3, dy: -8, size: 8, bold: false },
     { key: 'asientos', dataKey: 'asientos', x: 104.1, y: 108.5, dx: -4, dy: -4, size: 8, bold: false },
     { key: 'pasajeros', dataKey: 'pasajeros', x: 103.1, y: 96.4, dx: -3, dy: -6, size: 8, bold: false },
     { key: 'ruedas', dataKey: 'ruedas', x: 103.9, y: 67, dx: -4, dy: -3.5, size: 8, bold: false },
