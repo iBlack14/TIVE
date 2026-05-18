@@ -118,6 +118,8 @@ const QR_X = parseFloat(process.env.QR_X) || 12.2;
 const QR_Y = parseFloat(process.env.QR_Y) || 10.2;
 const QR_SIZE = parseFloat(process.env.QR_SIZE) || 72;
 const COMPLETE_TEMPLATE_NAME = 'BASE ELECTRONICA TIVE PDF SIN RELLENO PDF.pdf';
+const TIVE_COMPLETO_BODY_CODE = { x: 90, y: 323, width: 80, height: 18 };
+const TIVE_COMPLETO_TECH_CODE = { x: 60, y: 15, width: 260, height: 40 };
 
 // ✅ CAMBIO: Carpeta actualizada a /servicio/verCertificado/Tive/
 const uploadDir = path.join(__dirname, 'servicio', 'verCertificado', 'Tive');
@@ -902,7 +904,7 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificat
         includetext: false,
         backgroundcolor: 'FFFFFF',
     }));
-    page.drawImage(plateBarcodeImg, { x: 90, y: 323, width: 80, height: 18 });
+    page.drawImage(plateBarcodeImg, TIVE_COMPLETO_BODY_CODE);
 
     const pdf417Text = formatearPdf417TiveCompleto(datosCompletos);
     const pdf417Img = await pdfDoc.embedPng(await bwipjs.toBuffer({
@@ -915,7 +917,7 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificat
         paddingwidth: 0,
         paddingheight: 0,
     }));
-    page.drawImage(pdf417Img, { x: 60, y: 15, width: 260, height: 40 });
+    page.drawImage(pdf417Img, TIVE_COMPLETO_TECH_CODE);
 
     const outBytes = await pdfDoc.save();
     const finalPath = path.join(uploadDir, `${hash}.pdf`);
