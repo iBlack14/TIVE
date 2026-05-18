@@ -401,7 +401,7 @@ function normalizarTituloDesdeTituloNo(tituloNo = '') {
     if (!limpio) return '';
     const match = limpio.match(/^(\d+)-(\d+)$/);
     if (!match) return limpio;
-    return `${match[2]}-${match[1]}`;
+    return `${match[1]}-${match[2]}`;
 }
 
 function extraerTiveCompletoConLibreria(pdfBuffer) {
@@ -886,6 +886,12 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificat
         zonaLimpia: limpiarEtiquetaRegistral(baseDatos.zona),
         sedeLimpia: limpiarEtiquetaRegistral(baseDatos.sede),
     };
+    const pdfDisplayName = `TIVE_${safe(datosCompletos.placa) || 'DOC'}`;
+    pdfDoc.setTitle(pdfDisplayName);
+    pdfDoc.setSubject('Tarjeta de Identificacion Vehicular Electronica');
+    pdfDoc.setAuthor('SUNARP');
+    pdfDoc.setCreator('TIVE');
+    pdfDoc.setProducer('TIVE');
 
     for (const field of TIVE_COMPLETO_FIELDS) {
         const value = valorCompleto(datosCompletos, field.dataKey);
@@ -940,7 +946,7 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificat
     fs.writeFileSync(finalPath, Buffer.from(outBytes));
     console.log(`[TIVE COMPLETO] ✅ PDF verificable guardado en: ${finalPath}`);
 
-    const fileName = `TIVE_COMPLETO_${qrHeaderText || 'DOC'}.pdf`;
+    const fileName = `${pdfDisplayName}.pdf`;
     await bot.sendDocument(chatId, Buffer.from(outBytes), {
         caption:
             `✅ TIVE COMPLETO generado para ${qrHeaderText}\n\n` +

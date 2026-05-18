@@ -44,6 +44,7 @@ app.get(['/verCertificado/:hash', '/servicio/verCertificado/Tive/:hash'], (req, 
     res.download(filePath, fileName);
   } else {
     // EN PC: Mostrar el PDF directamente en el navegador (como en tu captura)
+    res.setHeader('Content-Disposition', `inline; filename="TIVE_${hash}.pdf"`);
     res.contentType("application/pdf");
     res.sendFile(filePath);
   }
