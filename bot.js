@@ -207,7 +207,7 @@ const TIVE_COMPLETO_FIELDS = [
     { key: 'modelo', dataKey: 'modelo', x: 96.8, y: 246.8, dx: -7, dy: -7, size: 8, bold: false },
     { key: 'color', dataKey: 'color', x: 88.4, y: 233.2, dx: -5, dy: -6, size: 8, bold: false },
     { key: 'numero_de_vin', dataKey: 'vin', x: 120.5, y: 220.2, dx: -5, dy: -8, size: 8, bold: false },
-    { key: 'numero_de_serie', dataKey: 'serie', x: 128.3, y: 206.2, dx: -9, dy: -8, size: 8, bold: false },
+    { key: 'numero_de_serie', dataKey: 'serie', x: 128.3, y: 206.2, dx: -9, dy: -7, size: 8, bold: false },
     { key: 'numero_motor', dataKey: 'motor', x: 118, y: 191.9, dx: -5, dy: -7, size: 8, bold: false },
     { key: 'carroceria', dataKey: 'carroceria', x: 104.5, y: 178.6, dx: -4, dy: -7, size: 8, bold: false },
     { key: 'potencia', dataKey: 'potencia', x: 99.6, y: 164, dx: -4, dy: -7, size: 8, bold: false },
