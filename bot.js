@@ -195,9 +195,9 @@ function getTemplatePath(name) {
 
 const TIVE_COMPLETO_FIELDS = [
     { key: 'codigo_de_verificacion', dataKey: 'codVerif', x: 231, y: 602, dx: -3, dy: -7, size: 8, bold: false },
-    { key: 'fecha', dataKey: 'fechaFinal', x: 180.8, y: 577.5, dx: -6, dy: -7, size: 8, bold: false },
-    { key: 'zona_registral', dataKey: 'zonaLimpia', x: 144.0, y: 482.0, dx: -14, dy: 7, size: 8, bold: false },
-    { key: 'sede_registral', dataKey: 'sedeLimpia', x: 141.0, y: 467.0, dx: -18, dy: 11, size: 8, bold: false },
+    { key: 'fecha', dataKey: 'fechaFinal', x: 180.8, y: 577.5, dx: -8, dy: -7, size: 8, bold: false },
+{ key: 'zona_registral', dataKey: 'zonaLimpia', x: 144.0, y: 482.0, dx: -14, dy: 7, size: 9, bold: true },
+{ key: 'sede_registral', dataKey: 'sedeLimpia', x: 141.0, y: 467.0, dx: -18, dy: 11, size: 9, bold: true },
     { key: 'parda_registral', dataKey: 'partida', x: 120.9, y: 452.9, dx: -3, dy: -7, size: 8, bold: false },
     { key: 'duadam', dataKey: 'dua', x: 103.1, y: 438, dx: -5.5, dy: -7, size: 8, bold: false },
     { key: 'titulo', dataKey: 'titulo', x: 89.3, y: 422.3, dx: -8, dy: -7, size: 8, bold: false },
