@@ -71,7 +71,7 @@ bot.on('callback_query', async (query) => {
         bot.editMessageText(`📄 *Extrayendo datos para TIVE COMPLETO...*`, { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' });
         try {
             const datos = extraerTiveCompletoConLibreria(buffer);
-            await iniciarCapturaFaltantesTiveCompleto(chatId, datos);
+            await iniciarCapturaFaltantesTiveCompleto(chatId, datos, buffer);
         } catch (e) {
             bot.sendMessage(chatId, `❌ Error: ${e.message}`);
         }
@@ -249,6 +249,41 @@ function valorCompleto(datos, dataKey) {
     return String(value).trim();
 }
 
+function valorPdf417(datos, dataKey) {
+    return valorCompleto(datos, dataKey)
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toUpperCase();
+}
+
+function formatearPdf417TiveCompleto(datos) {
+    const zona = valorPdf417(datos, 'zonaLimpia') || valorPdf417(datos, 'zona');
+    const sede = valorPdf417(datos, 'sedeLimpia') || valorPdf417(datos, 'sede');
+    const placa = valorPdf417(datos, 'placa');
+    const partida = valorPdf417(datos, 'partida');
+    const dua = valorPdf417(datos, 'dua');
+    const titulo = valorPdf417(datos, 'titulo');
+    const fechaTitulo = valorPdf417(datos, 'fechaTitulo');
+    const estado = valorPdf417(datos, 'estado') || 'NUEVO';
+    const codVerif = valorPdf417(datos, 'codVerif');
+    const marca = valorPdf417(datos, 'marca');
+    const motor = valorPdf417(datos, 'motor');
+    const vin = valorPdf417(datos, 'vin');
+    const serie = valorPdf417(datos, 'serie');
+
+    return [
+        `!ZONA REGISTRAL N ${zona}!SEDE REGISTRAL`,
+        `- ${sede.padEnd(22)}!${placa} !`,
+        `${partida}!${dua}!`,
+        `${titulo}!${fechaTitulo}!`,
+        `${estado.padEnd(22)}!    !${codVerif}!`,
+        `${marca.padEnd(22)}!`,
+        `${motor.padEnd(22)}!`,
+        `${vin.padEnd(22)}!`,
+        serie,
+    ].join('\n');
+}
+
 function placaRequiereConfirmacion(valor = '') {
     const original = safe(valor);
     if (!original) return true;
@@ -419,6 +454,16 @@ function generarCodigoVerificacion() {
     return Math.floor(10000000 + Math.random() * 90000000).toString();
 }
 
+function generarHashVerificacion(sourceBuffer, datos) {
+    const hash = crypto.createHash('sha256');
+    if (sourceBuffer) {
+        hash.update(sourceBuffer);
+    } else {
+        hash.update(JSON.stringify(datos));
+    }
+    return hash.digest('hex').toUpperCase();
+}
+
 function prepararDatosTiveCompleto(datos) {
     const prepared = { ...datos };
     prepared.placaOriginal = safe(prepared.placaOriginal || prepared.placa);
@@ -436,18 +481,19 @@ function obtenerCamposFaltantesTiveCompleto(datos) {
     });
 }
 
-async function iniciarCapturaFaltantesTiveCompleto(chatId, datos) {
+async function iniciarCapturaFaltantesTiveCompleto(chatId, datos, sourceBuffer = null) {
     const prepared = prepararDatosTiveCompleto(datos);
+    const sourceHash = generarHashVerificacion(sourceBuffer, prepared);
     const missingFields = obtenerCamposFaltantesTiveCompleto(prepared);
 
     if (missingFields.length === 0) {
         userTiveCompletoData.delete(chatId);
         userState.delete(chatId);
-        await generarTiveCompleto(chatId, prepared);
+        await generarTiveCompleto(chatId, prepared, null, sourceHash);
         return;
     }
 
-    userTiveCompletoData.set(chatId, { datos: prepared, missingFields, index: 0 });
+    userTiveCompletoData.set(chatId, { datos: prepared, missingFields, index: 0, sourceHash });
     userState.set(chatId, 'awaiting_tive_completo_field');
     const current = missingFields[0];
     await bot.sendMessage(chatId, `✍️ Falta el dato *${current.label}*.\nEnvíalo ahora para continuar con *TIVE COMPLETO*.`, {
@@ -693,19 +739,11 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
     dR(datos.cilindrada, 203, 121); dR(datos.pBruto, 203, 127.8);
     dR(datos.pNeto, 203, 134.6); dR(datos.cargaUtil, 203, 142);
 
-    const barText =
-        `📋 FICHA TÉCNICA TIVE\n` +
-        `━━━━━━━━━━━━━━━━━\n` +
-        `🚗 PLACA: ${safe(datos.placa)}\n` +
-        `🏢 ZONA: ${safe(datos.zona)}\n` +
-        `📍 SEDE: ${safe(datos.sede)}\n` +
-        `📑 PARTIDA: ${safe(datos.partida)}\n` +
-        `🔢 COD. VERIF: ${safe(datos.codVerif)}\n` +
-        `📝 TÍTULO: ${safe(datos.titulo)}\n` +
-        `📅 FECHA: ${safe(datos.fechaTitulo)}\n` +
-        `🛠️ MOTOR: ${safe(datos.motor)}\n` +
-        `🆔 VIN/SERIE: ${safe(datos.vin)}\n` +
-        `🚛 CARROCERÍA: ${safe(datos.carroceria)}`;
+    const barText = formatearPdf417TiveCompleto({
+        ...datos,
+        zonaLimpia,
+        sedeLimpia,
+    });
     const barImg = await pdfRev.embedPng(await bwipjs.toBuffer({ bcid: 'pdf417', text: barText, scale: 2, height: 12 }));
     pageR.drawImage(barImg, { x: (wR / 2) - (246 / 2), y: 5, width: 170, height: 22 });
 
@@ -789,7 +827,7 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
     }
 }
 
-async function generarTiveCompleto(chatId, datos, qrCustomLink = null) {
+async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificationHash = null) {
     console.log(`[TIVE COMPLETO] 🎨 Generando PDF completo para: ${safe(datos.placa)}`);
 
     const templatePath = getTemplatePath(COMPLETE_TEMPLATE_NAME);
@@ -821,7 +859,9 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null) {
     }
 
     const qrHeaderText = safe(datosCompletos.placa) || 'SIN-PLACA';
-    const qrHeaderImg = await pdfDoc.embedPng(await QRCode.toDataURL(qrHeaderText, {
+    const hash = verificationHash || generarHashVerificacion(null, datosCompletos);
+    const finalQRLink = qrCustomLink || `${DOMAIN}/servicio/verCertificado/Tive/${hash}`;
+    const qrHeaderImg = await pdfDoc.embedPng(await QRCode.toDataURL(finalQRLink, {
         margin: 1,
         color: { dark: '#000000', light: '#ffffff' },
     }));
@@ -831,26 +871,17 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null) {
     const headerY = height - ((QR_Y / 100) * height) - headerW;
     page.drawImage(qrHeaderImg, { x: headerX, y: headerY, width: headerW, height: headerH });
 
-    const code128Img = await pdfDoc.embedPng(await bwipjs.toBuffer({
+    const plateBarcodeImg = await pdfDoc.embedPng(await bwipjs.toBuffer({
         bcid: 'code128',
         text: qrHeaderText,
-        scale: 2,
-        height: 18,
+        scale: 4,
+        height: 12,
         includetext: false,
         backgroundcolor: 'FFFFFF',
     }));
-    page.drawImage(code128Img, { x: 90, y: 323, width: 80, height: 18 });
+    page.drawImage(plateBarcodeImg, { x: 90, y: 323, width: 80, height: 18 });
 
-    const finalQRLink = qrCustomLink || `${DOMAIN_URL}/servicio/verCertificado/Tive/TIVE-${qrHeaderText.toUpperCase()}`;
-    const pdf417Text = [
-        `PLACA:${qrHeaderText}`,
-        `MARCA:${safe(datosCompletos.marca)}`,
-        `MODELO:${safe(datosCompletos.modelo)}`,
-        `VIN:${safe(datosCompletos.vin)}`,
-        `SERIE:${safe(datosCompletos.serie)}`,
-        `MOTOR:${safe(datosCompletos.motor)}`,
-        `URL:${finalQRLink}`,
-    ].join('\n');
+    const pdf417Text = formatearPdf417TiveCompleto(datosCompletos);
     const pdf417Img = await pdfDoc.embedPng(await bwipjs.toBuffer({
         bcid: 'pdf417',
         text: pdf417Text,
@@ -864,9 +895,17 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null) {
     page.drawImage(pdf417Img, { x: 60, y: 15, width: 260, height: 40 });
 
     const outBytes = await pdfDoc.save();
+    const finalPath = path.join(uploadDir, `${hash}.pdf`);
+    fs.writeFileSync(finalPath, Buffer.from(outBytes));
+    console.log(`[TIVE COMPLETO] ✅ PDF verificable guardado en: ${finalPath}`);
+
     const fileName = `TIVE_COMPLETO_${qrHeaderText || 'DOC'}.pdf`;
     await bot.sendDocument(chatId, Buffer.from(outBytes), {
-        caption: `✅ TIVE COMPLETO generado para ${qrHeaderText}`,
+        caption:
+            `✅ TIVE COMPLETO generado para ${qrHeaderText}\n\n` +
+            `🔐 Hash: \`${hash}\`\n` +
+            `🌐 Link: \`${finalQRLink}\``,
+        parse_mode: 'Markdown'
     }, { filename: fileName });
 }
 
@@ -948,7 +987,7 @@ bot.on('message', async (msg) => {
             userState.delete(chatId);
             await bot.sendMessage(chatId, "✅ Datos faltantes completados. Generando *TIVE COMPLETO*...", { parse_mode: 'Markdown' });
             try {
-                await generarTiveCompleto(chatId, pending.datos);
+                await generarTiveCompleto(chatId, pending.datos, null, pending.sourceHash);
             } catch (e) {
                 console.error(`[BOT] ❌ Error generando TIVE COMPLETO:`, e);
                 bot.sendMessage(chatId, "❌ Error: " + e.message);
