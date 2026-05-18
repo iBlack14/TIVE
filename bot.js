@@ -119,7 +119,7 @@ const QR_Y = parseFloat(process.env.QR_Y) || 10.2;
 const QR_SIZE = parseFloat(process.env.QR_SIZE) || 72;
 const COMPLETE_TEMPLATE_NAME = 'BASE ELECTRONICA TIVE PDF SIN RELLENO PDF.pdf';
 const TIVE_COMPLETO_BODY_CODE = { x: 81, y: 323, width: 80, height: 18 };
-const TIVE_COMPLETO_TECH_CODE = { x: 60, y: 22, width: 260, height: 40 };
+const TIVE_COMPLETO_TECH_CODE = { x: 60, y: 17, width: 260, height: 40 };
 
 // ✅ CAMBIO: Carpeta actualizada a /servicio/verCertificado/Tive/
 const uploadDir = path.join(__dirname, 'servicio', 'verCertificado', 'Tive');
@@ -224,9 +224,9 @@ const TIVE_COMPLETO_FIELDS = [
     { key: 'altura', dataKey: 'altura', x: 213.9, y: 86.2, dx: 4, dy: -8.5, size: 8, bold: false },
     { key: 'ancho', dataKey: 'ancho', x: 212.6, y: 71.6, dx: 5, dy: -8, size: 8, bold: false },
     { key: 'cilindro', dataKey: 'cilindrada', x: 333.9, y: 109.6, dx: 24, dy: -5, size: 8, bold: false },
-    { key: 'p_bruto', dataKey: 'pBruto', x: 326.6, y: 97.6, dx: 33, dy: -6, size: 8, bold: false },
-    { key: 'campo_30', dataKey: 'pNeto', x: 329.9, y: 82.9, dx: 30, dy: -4, size: 8, bold: false },
-    { key: 'campo_31', dataKey: 'cargaUtil', x: 322.6, y: 71.6, dx: 38, dy: -6, size: 8, bold: false },
+    { key: 'p_bruto', dataKey: 'pBruto', x: 326.6, y: 97.6, dx: 32, dy: -6, size: 8, bold: false },
+    { key: 'campo_30', dataKey: 'pNeto', x: 329.9, y: 82.9, dx: 29, dy: -4, size: 8, bold: false },
+    { key: 'campo_31', dataKey: 'cargaUtil', x: 322.6, y: 71.6, dx: 37, dy: -6, size: 8, bold: false },
     { key: 'version', dataKey: 'version', x: 273.9, y: 155.9, dx: -8, dy: -8, size: 8, bold: false },
     { key: 'año_modelo', dataKey: 'añoModelo', x: 396.6, y: 262.9, dx: -6, dy: -8, size: 8, bold: false },
     { key: 'titulo_numero', dataKey: 'tituloNo', x: 190.6, y: 590.2, dx: -6.5, dy: -8, size: 8, bold: false },
@@ -1014,7 +1014,7 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificat
             // Posición: abajo lado derecho, donde está el espacio de la firma / QR
             page.drawImage(embeddedImg, {
                 x: 330,
-                y: 15,
+                y: 13,
                 width: 100,
                 height: 50
             });
