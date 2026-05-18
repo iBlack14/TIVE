@@ -118,7 +118,7 @@ const QR_X = parseFloat(process.env.QR_X) || 12.2;
 const QR_Y = parseFloat(process.env.QR_Y) || 10.2;
 const QR_SIZE = parseFloat(process.env.QR_SIZE) || 72;
 const COMPLETE_TEMPLATE_NAME = 'BASE ELECTRONICA TIVE PDF SIN RELLENO PDF.pdf';
-const TIVE_COMPLETO_BODY_CODE = { x: 85, y: 323, width: 80, height: 18 };
+const TIVE_COMPLETO_BODY_CODE = { x: 81, y: 323, width: 80, height: 18 };
 const TIVE_COMPLETO_TECH_CODE = { x: 60, y: 15, width: 260, height: 40 };
 
 // ✅ CAMBIO: Carpeta actualizada a /servicio/verCertificado/Tive/
@@ -199,7 +199,7 @@ const TIVE_COMPLETO_FIELDS = [
     { key: 'zona_registral', dataKey: 'zonaLimpia', x: 144.0, y: 482.0, dx: -14, dy: 7, size: 8, bold: false },
     { key: 'sede_registral', dataKey: 'sedeLimpia', x: 141.0, y: 467.0, dx: -18, dy: 11, size: 8, bold: false },
     { key: 'parda_registral', dataKey: 'partida', x: 120.9, y: 452.9, dx: -3, dy: -7, size: 8, bold: false },
-    { key: 'duadam', dataKey: 'dua', x: 103.1, y: 438, dx: 0, dy: -7, size: 8, bold: false },
+    { key: 'duadam', dataKey: 'dua', x: 103.1, y: 438, dx: -3, dy: -7, size: 8, bold: false },
     { key: 'titulo', dataKey: 'titulo', x: 89.3, y: 422.3, dx: -8, dy: -7, size: 8, bold: false },
     { key: 'fecha_del_titulo', dataKey: 'fechaTitulo', x: 126.3, y: 406.6, dx: -6.5, dy: -7, size: 8, bold: false },
     { key: 'categoria', dataKey: 'categoria', x: 105.1, y: 274.4, dx: -6, dy: -7, size: 8, bold: false },
