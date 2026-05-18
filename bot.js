@@ -399,6 +399,15 @@ function buscarTituloValorTive(texto) {
 function normalizarTituloDesdeTituloNo(tituloNo = '') {
     const limpio = safe(tituloNo).replace(/\s+/g, '');
     if (!limpio) return '';
+    
+    // Check if it's in YYYY-NNNNNN format and convert to NNNNNN-YYYY
+    const dateNumberMatch = limpio.match(/^(\d{4})-(\d+)$/);
+    if (dateNumberMatch) {
+        // Convert from "YYYY-NNNNNN" to "NNNNNN-YYYY"
+        return `${dateNumberMatch[2]}-${dateNumberMatch[1]}`;
+    }
+    
+    // Otherwise, return as-is for other formats like "NNNNN-YYYY" or "NNNN-NNNN"
     const match = limpio.match(/^(\d+)-(\d+)$/);
     if (!match) return limpio;
     return `${match[1]}-${match[2]}`;
