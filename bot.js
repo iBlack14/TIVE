@@ -196,8 +196,8 @@ function getTemplatePath(name) {
 const TIVE_COMPLETO_FIELDS = [
     { key: 'codigo_de_verificacion', dataKey: 'codVerif', x: 231, y: 602, dx: -3, dy: -7, size: 8, bold: false },
     { key: 'fecha', dataKey: 'fechaFinal', x: 180.8, y: 577.5, dx: -8, dy: -7, size: 8, bold: false },
-{ key: 'zona_registral', dataKey: 'zonaLimpia', x: 144.0, y: 482.0, dx: -14, dy: 8, size: 9, bold: true },
-{ key: 'sede_registral', dataKey: 'sedeLimpia', x: 141.0, y: 467.0, dx: -18, dy: 12, size: 9, bold: true },
+    { key: 'zona_registral', dataKey: 'zonaLimpia', x: 144.0, y: 482.0, dx: -14, dy: 8, size: 9, bold: true },
+    { key: 'sede_registral', dataKey: 'sedeLimpia', x: 141.0, y: 467.0, dx: -18, dy: 12, size: 9, bold: true },
     { key: 'parda_registral', dataKey: 'partida', x: 120.9, y: 452.9, dx: -3, dy: -7, size: 8, bold: false },
     { key: 'duadam', dataKey: 'dua', x: 103.1, y: 438, dx: -5.5, dy: -7, size: 8, bold: false },
     { key: 'titulo', dataKey: 'titulo', x: 89.3, y: 422.3, dx: -8, dy: -7, size: 8, bold: false },
@@ -227,7 +227,7 @@ const TIVE_COMPLETO_FIELDS = [
     { key: 'p_bruto', dataKey: 'pBruto', x: 326.6, y: 97.6, dx: 33, dy: -6, size: 8, bold: false },
     { key: 'campo_30', dataKey: 'pNeto', x: 329.9, y: 82.9, dx: 30, dy: -4, size: 8, bold: false },
     { key: 'campo_31', dataKey: 'cargaUtil', x: 322.6, y: 71.6, dx: 38, dy: -6, size: 8, bold: false },
-    { key: 'version', dataKey: 'version', x: 273.9, y: 155.9, dx: -3, dy: -8, size: 8, bold: false },
+    { key: 'version', dataKey: 'version', x: 273.9, y: 155.9, dx: -8, dy: -8, size: 8, bold: false },
     { key: 'año_modelo', dataKey: 'añoModelo', x: 396.6, y: 262.9, dx: -6, dy: -8, size: 8, bold: false },
     { key: 'titulo_numero', dataKey: 'tituloNo', x: 190.6, y: 590.2, dx: -6.5, dy: -8, size: 8, bold: false },
 ];
@@ -447,14 +447,14 @@ function buscarTituloValorTive(texto) {
 function normalizarTituloDesdeTituloNo(tituloNo = '') {
     const limpio = safe(tituloNo).replace(/\s+/g, '');
     if (!limpio) return '';
-    
+
     // Check if it's in YYYY-NNNNNN format and convert to NNNNNN-YYYY
     const dateNumberMatch = limpio.match(/^(\d{4})-(\d+)$/);
     if (dateNumberMatch) {
         // Convert from "YYYY-NNNNNN" to "NNNNNN-YYYY"
         return `${dateNumberMatch[2]}-${dateNumberMatch[1]}`;
     }
-    
+
     // Otherwise, return as-is for other formats like "NNNNN-YYYY" or "NNNN-NNNN"
     const match = limpio.match(/^(\d+)-(\d+)$/);
     if (!match) return limpio;
@@ -950,17 +950,17 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificat
     pdfDoc.setCreator('TIVE');
     pdfDoc.setProducer('TIVE');
 
-for (const field of TIVE_COMPLETO_FIELDS) {
-    const value = valorCompleto(datosCompletos, field.dataKey);
-    if (!value) continue;
-    page.drawText(value, {
-        x: field.x + field.dx,
-        y: field.y + field.dy,
-        size: field.size,
-        font: field.bold ? fontBold : fontRegular,
-        color: ['zona_registral', 'sede_registral'].includes(field.key.trim()) ? gris : negro,
-    });
-}
+    for (const field of TIVE_COMPLETO_FIELDS) {
+        const value = valorCompleto(datosCompletos, field.dataKey);
+        if (!value) continue;
+        page.drawText(value, {
+            x: field.x + field.dx,
+            y: field.y + field.dy,
+            size: field.size,
+            font: field.bold ? fontBold : fontRegular,
+            color: ['zona_registral', 'sede_registral'].includes(field.key.trim()) ? gris : negro,
+        });
+    }
 
     const qrHeaderText = safe(datosCompletos.placa) || 'SIN-PLACA';
     const hash = verificationHash || generarHashVerificacion(null, datosCompletos);
@@ -1010,7 +1010,7 @@ for (const field of TIVE_COMPLETO_FIELDS) {
             } else {
                 embeddedImg = await pdfDoc.embedJpg(signatureImgBytes);
             }
-            
+
             // Posición: abajo lado derecho, donde está el espacio de la firma / QR
             page.drawImage(embeddedImg, {
                 x: 350,
