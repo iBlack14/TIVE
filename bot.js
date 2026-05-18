@@ -195,7 +195,7 @@ function getTemplatePath(name) {
 
 const TIVE_COMPLETO_FIELDS = [
     { key: 'codigo_de_verificacion', dataKey: 'codVerif', x: 231, y: 602, dx: -3, dy: -7, size: 8, bold: false },
-    { key: 'fecha', dataKey: 'fechaFinal', x: 180.8, y: 577.5, dx: -3, dy: -7, size: 8, bold: false },
+    { key: 'fecha', dataKey: 'fechaFinal', x: 180.8, y: 577.5, dx: -6, dy: -7, size: 8, bold: false },
     { key: 'zona_registral', dataKey: 'zonaLimpia', x: 144.0, y: 482.0, dx: -14, dy: 7, size: 8, bold: false },
     { key: 'sede_registral', dataKey: 'sedeLimpia', x: 141.0, y: 467.0, dx: -18, dy: 11, size: 8, bold: false },
     { key: 'parda_registral', dataKey: 'partida', x: 120.9, y: 452.9, dx: -3, dy: -7, size: 8, bold: false },
@@ -878,6 +878,7 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificat
     const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const negro = rgb(0, 0, 0);
+    const gris = rgb(0.6, 0.6, 0.6);
 
     const baseDatos = prepararDatosTiveCompleto(datos);
     const datosCompletos = {
@@ -894,7 +895,7 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificat
             y: field.y + field.dy,
             size: field.size,
             font: field.bold ? fontBold : fontRegular,
-            color: negro,
+            color: ['zona_registral', 'sede_registral'].includes(field.key) ? gris : negro,
         });
     }
 
