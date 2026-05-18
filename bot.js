@@ -199,7 +199,7 @@ const TIVE_COMPLETO_FIELDS = [
     { key: 'zona_registral', dataKey: 'zonaLimpia', x: 144.0, y: 482.0, dx: -14, dy: 7, size: 8, bold: false },
     { key: 'sede_registral', dataKey: 'sedeLimpia', x: 141.0, y: 467.0, dx: -18, dy: 11, size: 8, bold: false },
     { key: 'parda_registral', dataKey: 'partida', x: 120.9, y: 452.9, dx: -3, dy: -7, size: 8, bold: false },
-    { key: 'duadam', dataKey: 'dua', x: 103.1, y: 438, dx: -3, dy: -7, size: 8, bold: false },
+    { key: 'duadam', dataKey: 'dua', x: 103.1, y: 438, dx: -5.5, dy: -7, size: 8, bold: false },
     { key: 'titulo', dataKey: 'titulo', x: 89.3, y: 422.3, dx: -8, dy: -7, size: 8, bold: false },
     { key: 'fecha_del_titulo', dataKey: 'fechaTitulo', x: 126.3, y: 406.6, dx: -6.5, dy: -7, size: 8, bold: false },
     { key: 'categoria', dataKey: 'categoria', x: 105.1, y: 274.4, dx: -9, dy: -7, size: 8, bold: false },
@@ -479,6 +479,21 @@ function generarCodigoVerificacion() {
     return Math.floor(10000000 + Math.random() * 90000000).toString();
 }
 
+function generarFechaHoraTive(date = new Date()) {
+    const parts = new Intl.DateTimeFormat('es-PE', {
+        timeZone: process.env.TIVE_TIMEZONE || 'America/Lima',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+    }).formatToParts(date);
+    const byType = Object.fromEntries(parts.map(part => [part.type, part.value]));
+    return `${byType.day}/${byType.month}/${byType.year} ${byType.hour}:${byType.minute}:${byType.second}`;
+}
+
 function generarHashVerificacion(sourceBuffer, datos) {
     const hash = crypto.createHash('sha256');
     if (sourceBuffer) {
@@ -494,7 +509,7 @@ function prepararDatosTiveCompleto(datos) {
     prepared.placaOriginal = safe(prepared.placaOriginal || prepared.placa);
     prepared.placa = fmtPlaca(prepared.placa || '');
     prepared.codVerif = safe(prepared.codVerif) || generarCodigoVerificacion();
-    prepared.fechaFinal = safe(prepared.fechaFinal) || safe(prepared.fechaTitulo);
+    prepared.fechaFinal = generarFechaHoraTive();
     prepared.añoFabricacion = safe(prepared.añoFabricacion) || safe(prepared.añoModelo);
     return prepared;
 }
