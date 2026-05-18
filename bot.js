@@ -472,10 +472,7 @@ function normalizarTituloDesdeTituloNo(tituloNo = '') {
 
 function extraerTiveCompletoConLibreria(pdfBuffer) {
     console.log(`[TIVE COMPLETO] 📄 Extrayendo con libreria (Buffer size: ${pdfBuffer.length} bytes)...`);
-    const text = extraerTextoPdfTive(pdfBuffer);
-    if (!safe(text)) {
-        throw new Error('No se pudo leer texto del PDF. Asegúrate de que sea un TIVE electrónico con texto embebido.');
-    }
+    const text = extraerTextoPdfTive(pdfBuffer) || '';
 
     const fechaTitulo = buscarValorTive(text, 'Fecha');
     const tituloNo = normalizarTituloDesdeTituloNo(buscarTituloNumeroTive(text));
@@ -597,7 +594,8 @@ function prepararDatosTiveCompleto(datos) {
     prepared.placa = fmtPlaca(prepared.placa || '');
     prepared.codVerif = safe(prepared.codVerif) || generarCodigoVerificacion();
     prepared.fechaFinal = generarFechaHoraTive();
-    prepared.añoFabricacion = safe(prepared.añoFabricacion) || safe(prepared.añoModelo);
+    prepared.añoFabricacion = safe(prepared.añoFabricacion);
+    prepared.añoModelo = safe(prepared.añoModelo);
     return prepared;
 }
 
@@ -649,17 +647,17 @@ async function iniciarCapturaFaltantesTiveCompletar(chatId, datos, sourceBuffer 
 }
 
 function obtenerCamposFaltantesTiveCompletar(datos) {
-    // Campos requeridos estándar (sólo si no están presentes)
+    // Campos requeridos estándar sólo si NO están presentes (vacíos)
     const standardFields = TIVE_COMPLETO_REQUIRED_FIELDS.filter(field => {
-        // Excluimos los 5 campos forzados para no duplicarlos si no existen
-        if (['añoFabricacion', 'añoModelo', 'fechaTitulo', 'titulo', 'tituloNo'].includes(field.key)) {
+        // Excluimos los que ya manejamos de forma prioritaria/forzada
+        if (['añoFabricacion', 'añoModelo', 'fechaTitulo', 'titulo', 'tituloNo', 'añoTitulo'].includes(field.key)) {
             return false;
         }
         if (field.key === 'placa') return placaRequiereConfirmacion(datos.placaOriginal);
         return !safe(datos[field.key]);
     });
 
-    // Campos forzados SI O SI
+    // Los 5 campos forzados/prioritarios SI O SI (se encuentre o no en la extracción)
     const forcedFields = [
         { key: 'añoFabricacion', label: 'AÑO DE FABRICACIÓN' },
         { key: 'añoModelo', label: 'AÑO DE MODELO' },
@@ -668,7 +666,7 @@ function obtenerCamposFaltantesTiveCompletar(datos) {
         { key: 'tituloNo', label: 'TÍTULO N°' }
     ];
 
-    // Primero pedimos los 5 campos forzados, y luego el resto de requeridos si faltaran
+    // Retorna prioritarios forzados primero (se encuentre o no), y luego standard faltantes
     return [...forcedFields, ...standardFields];
 }
 
@@ -1014,6 +1012,9 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificat
     const gris = rgb(0.6, 0.6, 0.6);
 
     const baseDatos = prepararDatosTiveCompleto(datos);
+    if (!baseDatos.añoFabricacion && baseDatos.añoModelo) {
+        baseDatos.añoFabricacion = baseDatos.añoModelo;
+    }
     const datosCompletos = {
         ...baseDatos,
         zonaLimpia: limpiarEtiquetaRegistral(baseDatos.zona),
