@@ -119,7 +119,7 @@ const QR_Y = parseFloat(process.env.QR_Y) || 10.2;
 const QR_SIZE = parseFloat(process.env.QR_SIZE) || 72;
 const COMPLETE_TEMPLATE_NAME = 'BASE ELECTRONICA TIVE PDF SIN RELLENO PDF.pdf';
 const TIVE_COMPLETO_BODY_CODE = { x: 81, y: 323, width: 80, height: 18 };
-const TIVE_COMPLETO_TECH_CODE = { x: 60, y: 13, width: 260, height: 40 };
+const TIVE_COMPLETO_TECH_CODE = { x: 60, y: 22, width: 260, height: 40 };
 
 // ✅ CAMBIO: Carpeta actualizada a /servicio/verCertificado/Tive/
 const uploadDir = path.join(__dirname, 'servicio', 'verCertificado', 'Tive');
@@ -215,7 +215,7 @@ const TIVE_COMPLETO_FIELDS = [
     { key: 'combusble', dataKey: 'combustible', x: 108.6, y: 138.4, dx: -3, dy: -8, size: 8, bold: false },
     { key: 'asientos', dataKey: 'asientos', x: 104.1, y: 108.5, dx: -6, dy: -4, size: 8, bold: false },
     { key: 'pasajeros', dataKey: 'pasajeros', x: 103.1, y: 96.4, dx: -5, dy: -6, size: 8, bold: false },
-    { key: 'ruedas', dataKey: 'ruedas', x: 103.9, y: 67, dx: -4, dy: -5.5, size: 8, bold: false },
+    { key: 'ruedas', dataKey: 'ruedas', x: 103.9, y: 67, dx: -4, dy: -4, size: 8, bold: false },
     { key: 'ejes', dataKey: 'ejes', x: 103.5, y: 81.8, dx: -5, dy: -5, size: 8, bold: false },
     { key: 'placa', dataKey: 'placa', x: 317.9, y: 406.9, dx: -6, dy: -6, size: 25, bold: true },
     { key: 'año_fabricacion', dataKey: 'añoFabricacion', x: 392.6, y: 272.6, dx: -8, dy: -7, size: 8, bold: false },
