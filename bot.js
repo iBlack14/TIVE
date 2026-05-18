@@ -75,6 +75,14 @@ bot.on('callback_query', async (query) => {
         } catch (e) {
             bot.sendMessage(chatId, `❌ Error: ${e.message}`);
         }
+    } else if (data === "gen_tive_completar") {
+        bot.editMessageText(`📄 *Extrayendo datos para TIVE PARA COMPLETAR...*`, { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' });
+        try {
+            const datos = extraerTiveCompletoConLibreria(buffer);
+            await iniciarCapturaFaltantesTiveCompletar(chatId, datos, buffer);
+        } catch (e) {
+            bot.sendMessage(chatId, `❌ Error: ${e.message}`);
+        }
     } else if (data === "insert_qr_only") {
         const hash = crypto.createHash('sha256').update(buffer).digest('hex').toUpperCase();
         await finalizarInsercionQR(chatId, buffer, "CERTIFICADO", hash, messageId);
@@ -106,6 +114,7 @@ const userPdfs = new Map();
 const userState = new Map();
 const userAntiguaData = new Map();
 const userTiveCompletoData = new Map();
+const userTiveCompletarData = new Map();
 
 // --- HANDLERS DE EVENTOS ---
 
@@ -619,6 +628,50 @@ async function iniciarCapturaFaltantesTiveCompleto(chatId, datos, sourceBuffer =
     });
 }
 
+async function iniciarCapturaFaltantesTiveCompletar(chatId, datos, sourceBuffer = null) {
+    const prepared = prepararDatosTiveCompleto(datos);
+    const sourceHash = generarHashVerificacion(sourceBuffer, prepared);
+    const missingFields = obtenerCamposFaltantesTiveCompletar(prepared);
+
+    if (missingFields.length === 0) {
+        userTiveCompletarData.delete(chatId);
+        userState.delete(chatId);
+        await generarTiveCompleto(chatId, prepared, null, sourceHash);
+        return;
+    }
+
+    userTiveCompletarData.set(chatId, { datos: prepared, missingFields, index: 0, sourceHash });
+    userState.set(chatId, 'awaiting_tive_completar_field');
+    const current = missingFields[0];
+    await bot.sendMessage(chatId, `✍️ Falta el dato *${current.label}*.\nEnvíalo ahora para continuar con *TIVE PARA COMPLETAR*.`, {
+        parse_mode: 'Markdown'
+    });
+}
+
+function obtenerCamposFaltantesTiveCompletar(datos) {
+    // Campos requeridos estándar (sólo si no están presentes)
+    const standardFields = TIVE_COMPLETO_REQUIRED_FIELDS.filter(field => {
+        // Excluimos los 5 campos forzados para no duplicarlos si no existen
+        if (['añoFabricacion', 'añoModelo', 'fechaTitulo', 'titulo', 'tituloNo'].includes(field.key)) {
+            return false;
+        }
+        if (field.key === 'placa') return placaRequiereConfirmacion(datos.placaOriginal);
+        return !safe(datos[field.key]);
+    });
+
+    // Campos forzados SI O SI
+    const forcedFields = [
+        { key: 'añoFabricacion', label: 'AÑO DE FABRICACIÓN' },
+        { key: 'añoModelo', label: 'AÑO DE MODELO' },
+        { key: 'añoTitulo', label: 'AÑO DE TÍTULO' },
+        { key: 'fechaTitulo', label: 'FECHA DE TÍTULO' },
+        { key: 'tituloNo', label: 'TÍTULO N°' }
+    ];
+
+    // Primero pedimos los 5 campos forzados, y luego el resto de requeridos si faltaran
+    return [...forcedFields, ...standardFields];
+}
+
 async function extraerConIA(pdfBuffer) {
     console.log(`[IA] 🧠 Iniciando extracción con Gemini (Buffer size: ${pdfBuffer.length} bytes)...`);
     if (API_KEYS.length === 0) throw new Error("Llaves API no configuradas.");
@@ -1082,6 +1135,16 @@ bot.onText(/\/start/, (msg) => {
     bot.sendMessage(msg.chat.id, welcome, { parse_mode: 'Markdown' }).catch(err => console.error("[BOT] ❌ Error enviando /start:", err.message));
 });
 
+bot.onText(/\/tive_completar/, (msg) => {
+    if (!isAuthorized(msg)) return;
+    bot.sendMessage(msg.chat.id, "💡 Para usar *TIVE PARA COMPLETAR*, primero sube un archivo PDF de SUNARP y presiona el botón correspondiente en el menú.", { parse_mode: 'Markdown' });
+});
+
+bot.onText(/\/tive_completo/, (msg) => {
+    if (!isAuthorized(msg)) return;
+    bot.sendMessage(msg.chat.id, "💡 Para usar *TIVE COMPLETO*, primero sube un archivo PDF de SUNARP y presiona el botón correspondiente en el menú.", { parse_mode: 'Markdown' });
+});
+
 bot.on('document', async (msg) => {
     console.log(`[BOT] 📄 Documento recibido: ${msg.document.file_name} (${msg.document.file_size} bytes)`);
     if (!isAuthorized(msg)) return;
@@ -1101,6 +1164,7 @@ bot.on('document', async (msg) => {
                 inline_keyboard: [
                     [{ text: "🚀 Generar Fotos TIVE PVC", callback_data: "ask_qr" }],
                     [{ text: "🧾 TIVE COMPLETO", callback_data: "gen_tive_completo" }],
+                    [{ text: "🧾 TIVE PARA COMPLETAR", callback_data: "gen_tive_completar" }],
                     [{ text: "📜 Generar Tarjeta Antigua", callback_data: "gen_antigua" }],
                     [{ text: "🔐 Insertar QR en PDF Original", callback_data: "insert_qr_only" }]
                 ]
@@ -1125,7 +1189,44 @@ bot.on('message', async (msg) => {
     const state = userState.get(chatId);
     const buffer = userPdfs.get(chatId);
 
-    if (state === "awaiting_tive_completo_field" && msg.text && !msg.text.startsWith('/')) {
+    if (state === "awaiting_tive_completar_field" && msg.text && !msg.text.startsWith('/')) {
+        const pending = userTiveCompletarData.get(chatId);
+        if (!pending) {
+            userState.delete(chatId);
+            return bot.sendMessage(chatId, "⚠️ Se perdió el estado de captura. Vuelve a elegir *TIVE PARA COMPLETAR*.", { parse_mode: 'Markdown' });
+        }
+        const current = pending.missingFields[pending.index];
+        const rawValue = msg.text.trim();
+        pending.datos[current.key] = current.key === 'placa' ? fmtPlaca(rawValue) : rawValue;
+        if (current.key === 'placa') {
+            pending.datos.placaOriginal = rawValue;
+        }
+        pending.index += 1;
+
+        if (pending.index >= pending.missingFields.length) {
+            userTiveCompletarData.delete(chatId);
+            userState.delete(chatId);
+            
+            // Si tenemos añoTitulo y tituloNo, armamos el título completo en el formato normalizado
+            if (pending.datos.añoTitulo && pending.datos.tituloNo) {
+                const fullTitle = normalizarTituloDesdeTituloNo(`${pending.datos.tituloNo}-${pending.datos.añoTitulo}`);
+                pending.datos.titulo = fullTitle;
+                pending.datos.tituloNo = fullTitle;
+            }
+
+            await bot.sendMessage(chatId, "✅ Datos faltantes completados. Generando *TIVE PARA COMPLETAR*...", { parse_mode: 'Markdown' });
+            try {
+                await generarTiveCompleto(chatId, pending.datos, null, pending.sourceHash);
+            } catch (e) {
+                console.error(`[BOT] ❌ Error generando TIVE PARA COMPLETAR:`, e);
+                bot.sendMessage(chatId, "❌ Error: " + e.message);
+            }
+        } else {
+            userTiveCompletarData.set(chatId, pending);
+            const next = pending.missingFields[pending.index];
+            await bot.sendMessage(chatId, `✍️ Falta el dato *${next.label}*.\nEnvíalo para continuar.`, { parse_mode: 'Markdown' });
+        }
+    } else if (state === "awaiting_tive_completo_field" && msg.text && !msg.text.startsWith('/')) {
         const pending = userTiveCompletoData.get(chatId);
         if (!pending) {
             userState.delete(chatId);
