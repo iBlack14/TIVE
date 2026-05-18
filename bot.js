@@ -1013,8 +1013,8 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificat
 
             // Posición: abajo lado derecho, donde está el espacio de la firma / QR
             page.drawImage(embeddedImg, {
-                x: 350,
-                y: 13,
+                x: 330,
+                y: 15,
                 width: 100,
                 height: 50
             });
