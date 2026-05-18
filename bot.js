@@ -203,7 +203,7 @@ const TIVE_COMPLETO_FIELDS = [
     { key: 'titulo', dataKey: 'titulo', x: 89.3, y: 422.3, dx: -8, dy: -7, size: 8, bold: false },
     { key: 'fecha_del_titulo', dataKey: 'fechaTitulo', x: 126.3, y: 406.6, dx: -6.5, dy: -7, size: 8, bold: false },
     { key: 'categoria', dataKey: 'categoria', x: 105.1, y: 274.4, dx: -9, dy: -7, size: 8, bold: false },
-    { key: 'marca', dataKey: 'marca', x: 89.9, y: 261.1, dx: -10, dy: -7, size: 8, bold: false },
+    { key: 'marca', dataKey: 'marca', x: 89.9, y: 261.1, dx: -6, dy: -7, size: 8, bold: false },
     { key: 'modelo', dataKey: 'modelo', x: 96.8, y: 246.8, dx: -7, dy: -7, size: 8, bold: false },
     { key: 'color', dataKey: 'color', x: 88.4, y: 233.2, dx: -5, dy: -6, size: 8, bold: false },
     { key: 'numero_de_vin', dataKey: 'vin', x: 120.5, y: 220.2, dx: -5, dy: -8, size: 8, bold: false },
@@ -902,17 +902,17 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificat
     pdfDoc.setCreator('TIVE');
     pdfDoc.setProducer('TIVE');
 
-    for (const field of TIVE_COMPLETO_FIELDS) {
-        const value = valorCompleto(datosCompletos, field.dataKey);
-        if (!value) continue;
-        page.drawText(value, {
-            x: field.x + field.dx,
-            y: field.y + field.dy,
-            size: field.size,
-            font: field.bold ? fontBold : fontRegular,
-            color: ['zona_registral', 'sede_registral'].includes(field.key) ? gris : negro,
-        });
-    }
+for (const field of TIVE_COMPLETO_FIELDS) {
+    const value = valorCompleto(datosCompletos, field.dataKey);
+    if (!value) continue;
+    page.drawText(value, {
+        x: field.x + field.dx,
+        y: field.y + field.dy,
+        size: field.size,
+        font: field.bold ? fontBold : fontRegular,
+        color: ['zona_registral', 'sede_registral'].includes(field.key.trim()) ? gris : negro,
+    });
+}
 
     const qrHeaderText = safe(datosCompletos.placa) || 'SIN-PLACA';
     const hash = verificationHash || generarHashVerificacion(null, datosCompletos);
