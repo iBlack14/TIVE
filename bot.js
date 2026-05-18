@@ -204,7 +204,7 @@ const TIVE_COMPLETO_FIELDS = [
     { key: 'fecha_del_titulo', dataKey: 'fechaTitulo', x: 126.3, y: 406.6, dx: -7.5, dy: -7, size: 8, bold: false },
     { key: 'categoria', dataKey: 'categoria', x: 105.1, y: 274.4, dx: -11, dy: -6.5, size: 8, bold: false },
     { key: 'marca', dataKey: 'marca', x: 89.9, y: 261.1, dx: -6, dy: -7, size: 8, bold: false },
-    { key: 'modelo', dataKey: 'modelo', x: 96.8, y: 246.8, dx: -7, dy: -7, size: 8, bold: false },
+    { key: 'modelo', dataKey: 'modelo', x: 96.8, y: 246.8, dx: -7, dy: -6, size: 8, bold: false },
     { key: 'color', dataKey: 'color', x: 88.4, y: 233.2, dx: -5, dy: -6, size: 8, bold: false },
     { key: 'numero_de_vin', dataKey: 'vin', x: 120.5, y: 220.2, dx: -5, dy: -7, size: 8, bold: false },
     { key: 'numero_de_serie', dataKey: 'serie', x: 128.3, y: 206.2, dx: -9, dy: -7, size: 8, bold: false },
