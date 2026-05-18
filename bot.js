@@ -119,7 +119,7 @@ const QR_Y = parseFloat(process.env.QR_Y) || 10.2;
 const QR_SIZE = parseFloat(process.env.QR_SIZE) || 72;
 const COMPLETE_TEMPLATE_NAME = 'BASE ELECTRONICA TIVE PDF SIN RELLENO PDF.pdf';
 const TIVE_COMPLETO_BODY_CODE = { x: 81, y: 323, width: 80, height: 18 };
-const TIVE_COMPLETO_TECH_CODE = { x: 60, y: 15, width: 260, height: 40 };
+const TIVE_COMPLETO_TECH_CODE = { x: 60, y: 13, width: 260, height: 40 };
 
 // ✅ CAMBIO: Carpeta actualizada a /servicio/verCertificado/Tive/
 const uploadDir = path.join(__dirname, 'servicio', 'verCertificado', 'Tive');
@@ -219,14 +219,14 @@ const TIVE_COMPLETO_FIELDS = [
     { key: 'ejes', dataKey: 'ejes', x: 103.5, y: 81.8, dx: -3, dy: -5, size: 8, bold: false },
     { key: 'placa', dataKey: 'placa', x: 317.9, y: 406.9, dx: -6, dy: -6, size: 25, bold: true },
     { key: 'año_fabricacion', dataKey: 'añoFabricacion', x: 392.6, y: 272.6, dx: -8, dy: -7, size: 8, bold: false },
-    { key: 'cilindros', dataKey: 'cilindros', x: 208.6, y: 114.2, dx: 8, dy: -9, size: 8, bold: false },
+    { key: 'cilindros', dataKey: 'cilindros', x: 208.6, y: 114.2, dx: 12, dy: -9, size: 8, bold: false },
     { key: 'longitud', dataKey: 'longitud', x: 213.9, y: 100.2, dx: 4, dy: -8, size: 8, bold: false },
     { key: 'altura', dataKey: 'altura', x: 213.9, y: 86.2, dx: 4, dy: -8.5, size: 8, bold: false },
     { key: 'ancho', dataKey: 'ancho', x: 212.6, y: 71.6, dx: 5, dy: -8, size: 8, bold: false },
     { key: 'cilindro', dataKey: 'cilindrada', x: 333.9, y: 109.6, dx: 22, dy: -5, size: 8, bold: false },
-    { key: 'p_bruto', dataKey: 'pBruto', x: 326.6, y: 97.6, dx: 30, dy: -6, size: 8, bold: false },
-    { key: 'campo_30', dataKey: 'pNeto', x: 329.9, y: 82.9, dx: 27, dy: -4, size: 8, bold: false },
-    { key: 'campo_31', dataKey: 'cargaUtil', x: 322.6, y: 71.6, dx: 35, dy: -6, size: 8, bold: false },
+    { key: 'p_bruto', dataKey: 'pBruto', x: 326.6, y: 97.6, dx: 33, dy: -6, size: 8, bold: false },
+    { key: 'campo_30', dataKey: 'pNeto', x: 329.9, y: 82.9, dx: 30, dy: -4, size: 8, bold: false },
+    { key: 'campo_31', dataKey: 'cargaUtil', x: 322.6, y: 71.6, dx: 38, dy: -6, size: 8, bold: false },
     { key: 'version', dataKey: 'version', x: 273.9, y: 155.9, dx: -3, dy: -8, size: 8, bold: false },
     { key: 'año_modelo', dataKey: 'añoModelo', x: 396.6, y: 262.9, dx: -6, dy: -8, size: 8, bold: false },
     { key: 'titulo_numero', dataKey: 'tituloNo', x: 190.6, y: 590.2, dx: -6.5, dy: -8, size: 8, bold: false },
