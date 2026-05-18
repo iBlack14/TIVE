@@ -196,8 +196,8 @@ function getTemplatePath(name) {
 const TIVE_COMPLETO_FIELDS = [
     { key: 'codigo_de_verificacion', dataKey: 'codVerif', x: 231, y: 602, dx: -3, dy: -7, size: 8, bold: false },
     { key: 'fecha', dataKey: 'fechaFinal', x: 180.8, y: 577.5, dx: -8, dy: -7, size: 8, bold: false },
-    { key: 'zona_registral', dataKey: 'zonaLimpia', x: 144.0, y: 482.0, dx: -14, dy: 8, size: 9, bold: true },
-    { key: 'sede_registral', dataKey: 'sedeLimpia', x: 141.0, y: 467.0, dx: -18, dy: 12, size: 9, bold: true },
+    { key: 'zona_registral', dataKey: 'zonaLimpia', x: 144.0, y: 482.0, dx: -14, dy: 6, size: 9, bold: true },
+    { key: 'sede_registral', dataKey: 'sedeLimpia', x: 141.0, y: 467.0, dx: -20, dy: 10.5, size: 9, bold: true },
     { key: 'parda_registral', dataKey: 'partida', x: 120.9, y: 452.9, dx: -3, dy: -7, size: 8, bold: false },
     { key: 'duadam', dataKey: 'dua', x: 103.1, y: 438, dx: -5.5, dy: -7, size: 8, bold: false },
     { key: 'titulo', dataKey: 'titulo', x: 89.3, y: 422.3, dx: -8, dy: -7, size: 8, bold: false },
@@ -210,25 +210,25 @@ const TIVE_COMPLETO_FIELDS = [
     { key: 'numero_de_serie', dataKey: 'serie', x: 128.3, y: 206.2, dx: -9, dy: -7, size: 8, bold: false },
     { key: 'numero_motor', dataKey: 'motor', x: 118, y: 191.9, dx: -5, dy: -7, size: 8, bold: false },
     { key: 'carroceria', dataKey: 'carroceria', x: 104.5, y: 178.6, dx: -4, dy: -7, size: 8, bold: false },
-    { key: 'potencia', dataKey: 'potencia', x: 99.6, y: 164, dx: -4, dy: -7, size: 8, bold: false },
+    { key: 'potencia', dataKey: 'potencia', x: 99.6, y: 164, dx: -8, dy: -7, size: 8, bold: false },
     { key: 'form_rod', dataKey: 'formRod', x: 107.6, y: 150.7, dx: -6, dy: -6, size: 8, bold: false },
     { key: 'combusble', dataKey: 'combustible', x: 108.6, y: 138.4, dx: -3, dy: -8, size: 8, bold: false },
     { key: 'asientos', dataKey: 'asientos', x: 104.1, y: 108.5, dx: -6, dy: -4, size: 8, bold: false },
     { key: 'pasajeros', dataKey: 'pasajeros', x: 103.1, y: 96.4, dx: -5, dy: -6, size: 8, bold: false },
-    { key: 'ruedas', dataKey: 'ruedas', x: 103.9, y: 67, dx: -4, dy: -4, size: 8, bold: false },
+    { key: 'ruedas', dataKey: 'ruedas', x: 103.9, y: 67, dx: -5.5, dy: -4, size: 8, bold: false },
     { key: 'ejes', dataKey: 'ejes', x: 103.5, y: 81.8, dx: -5, dy: -5, size: 8, bold: false },
     { key: 'placa', dataKey: 'placa', x: 317.9, y: 406.9, dx: -6, dy: -6, size: 25, bold: true },
-    { key: 'año_fabricacion', dataKey: 'añoFabricacion', x: 392.6, y: 272.6, dx: -8, dy: -7, size: 8, bold: false },
-    { key: 'cilindros', dataKey: 'cilindros', x: 208.6, y: 114.2, dx: 9, dy: -9, size: 8, bold: false },
-    { key: 'longitud', dataKey: 'longitud', x: 213.9, y: 100.2, dx: 4, dy: -8, size: 8, bold: false },
-    { key: 'altura', dataKey: 'altura', x: 213.9, y: 86.2, dx: 4, dy: -8.5, size: 8, bold: false },
-    { key: 'ancho', dataKey: 'ancho', x: 212.6, y: 71.6, dx: 5, dy: -8, size: 8, bold: false },
+    { key: 'año_fabricacion', dataKey: 'añoFabricacion', x: 392.6, y: 272.6, dx: -10, dy: -6, size: 8, bold: false },
+    { key: 'cilindros', dataKey: 'cilindros', x: 208.6, y: 114.2, dx: 7, dy: -9, size: 8, bold: false },
+    { key: 'longitud', dataKey: 'longitud', x: 213.9, y: 100.2, dx: 2, dy: -8, size: 8, bold: false },
+    { key: 'altura', dataKey: 'altura', x: 213.9, y: 86.2, dx: 2, dy: -8.5, size: 8, bold: false },
+    { key: 'ancho', dataKey: 'ancho', x: 212.6, y: 71.6, dx: 3.5, dy: -8, size: 8, bold: false },
     { key: 'cilindro', dataKey: 'cilindrada', x: 333.9, y: 109.6, dx: 24, dy: -5, size: 8, bold: false },
     { key: 'p_bruto', dataKey: 'pBruto', x: 326.6, y: 97.6, dx: 32, dy: -6, size: 8, bold: false },
     { key: 'campo_30', dataKey: 'pNeto', x: 329.9, y: 82.9, dx: 29, dy: -4, size: 8, bold: false },
     { key: 'campo_31', dataKey: 'cargaUtil', x: 322.6, y: 71.6, dx: 37, dy: -6, size: 8, bold: false },
-    { key: 'version', dataKey: 'version', x: 273.9, y: 155.9, dx: -8, dy: -8, size: 8, bold: false },
-    { key: 'año_modelo', dataKey: 'añoModelo', x: 396.6, y: 262.9, dx: -6, dy: -8, size: 8, bold: false },
+    { key: 'version', dataKey: 'version', x: 273.9, y: 155.9, dx: -9.5, dy: -8, size: 8, bold: false },
+    { key: 'año_modelo', dataKey: 'añoModelo', x: 396.6, y: 262.9, dx: -6, dy: -9, size: 5.5, bold: false },
     { key: 'titulo_numero', dataKey: 'tituloNo', x: 190.6, y: 590.2, dx: -6.5, dy: -8, size: 8, bold: false },
 ];
 
@@ -972,7 +972,7 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificat
     const headerW = QR_SIZE;
     const headerH = headerW;
     const headerX = (QR_X / 100) * width;
-    const headerY = height - ((QR_Y / 100) * height) - headerW;
+    const headerY = height - ((QR_Y / 97) * height) - headerW;
     page.drawImage(qrHeaderImg, { x: headerX, y: headerY, width: headerW, height: headerH });
 
     const plateBarcodeImg = await pdfDoc.embedPng(await bwipjs.toBuffer({
@@ -1014,7 +1014,7 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificat
             // Posición: abajo lado derecho, donde está el espacio de la firma / QR
             page.drawImage(embeddedImg, {
                 x: 330,
-                y: 13,
+                y: 9,
                 width: 100,
                 height: 50
             });

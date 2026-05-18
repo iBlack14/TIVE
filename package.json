@@ -33,5 +33,10 @@
     "qrcode": "^1.5.3",
     "sharp": "^0.34.5",
     "tesseract.js": "^7.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "canvas": "npm:skia-canvas@^1.0.2"
+    }
   }
 }
