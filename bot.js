@@ -561,6 +561,27 @@ function generarHashVerificacion(sourceBuffer, datos) {
     return hash.digest('hex').toUpperCase();
 }
 
+async function aplicarSeguridadOCR(pdfBuffer, width = 2000) {
+    console.log(`[OCR SECURITY] 🔒 Aplicando seguridad tipo OCR (aplanado)...`);
+    try {
+        const images = await pdf2img.convert(pdfBuffer, { width: width });
+        const securedPdf = await PDFDocument.create();
+        
+        for (let i = 0; i < images.length; i++) {
+            const imgBuffer = Buffer.from(images[i]);
+            const embeddedImg = await securedPdf.embedPng(imgBuffer);
+            const { width: imgW, height: imgH } = embeddedImg.scale(1);
+            const page = securedPdf.addPage([imgW, imgH]);
+            page.drawImage(embeddedImg, { x: 0, y: 0, width: imgW, height: imgH });
+        }
+        
+        return await securedPdf.save();
+    } catch (e) {
+        console.error(`[OCR SECURITY] ❌ Error aplicando seguridad OCR:`, e.message);
+        return pdfBuffer; // Fallback al PDF original en caso de error
+    }
+}
+
 function prepararDatosTiveCompleto(datos) {
     const prepared = { ...datos };
     prepared.placaOriginal = safe(prepared.placaOriginal || prepared.placa);
@@ -919,8 +940,10 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
     } catch (e) {
         console.error(`[TIVE] ❌ Error enviando fotos:`, e.message);
         console.log(`[TIVE] 📤 Enviando respaldo en PDF...`);
-        await bot.sendDocument(chatId, Buffer.from(bufA), { caption: "Anverso (PDF)" }, { filename: `anv_${safe(datos.placa)}.pdf` });
-        await bot.sendDocument(chatId, Buffer.from(bufR), { caption: "Reverso (PDF)" }, { filename: `rev_${safe(datos.placa)}.pdf` });
+        const securedBufA = await aplicarSeguridadOCR(Buffer.from(bufA));
+        const securedBufR = await aplicarSeguridadOCR(Buffer.from(bufR));
+        await bot.sendDocument(chatId, Buffer.from(securedBufA), { caption: "Anverso (PDF)" }, { filename: `anv_${safe(datos.placa)}.pdf` });
+        await bot.sendDocument(chatId, Buffer.from(securedBufR), { caption: "Reverso (PDF)" }, { filename: `rev_${safe(datos.placa)}.pdf` });
     }
 }
 
@@ -1025,12 +1048,16 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificat
     }
 
     const outBytes = await pdfDoc.save();
+    
+    // Aplicar seguridad tipo OCR (aplanar el PDF para que el texto sea de tipo imagen)
+    const securedBytes = await aplicarSeguridadOCR(Buffer.from(outBytes));
+
     const finalPath = path.join(uploadDir, `${hash}.pdf`);
-    fs.writeFileSync(finalPath, Buffer.from(outBytes));
-    console.log(`[TIVE COMPLETO] ✅ PDF verificable guardado en: ${finalPath}`);
+    fs.writeFileSync(finalPath, Buffer.from(securedBytes));
+    console.log(`[TIVE COMPLETO] ✅ PDF verificable (con seguridad OCR) guardado en: ${finalPath}`);
 
     const fileName = `${pdfDisplayName}.pdf`;
-    await bot.sendDocument(chatId, Buffer.from(outBytes), {
+    await bot.sendDocument(chatId, Buffer.from(securedBytes), {
         caption:
             `✅ TIVE COMPLETO generado para ${qrHeaderText}\n\n` +
             `🔐 Hash: \`${hash}\`\n` +
