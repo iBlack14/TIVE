@@ -202,7 +202,7 @@ const TIVE_COMPLETO_FIELDS = [
     { key: 'duadam', dataKey: 'dua', x: 103.1, y: 438, dx: -5.5, dy: -7, size: 8, bold: false },
     { key: 'titulo', dataKey: 'titulo', x: 89.3, y: 422.3, dx: -8, dy: -7, size: 8, bold: false },
     { key: 'fecha_del_titulo', dataKey: 'fechaTitulo', x: 126.3, y: 406.6, dx: -7.5, dy: -7, size: 8, bold: false },
-    { key: 'categoria', dataKey: 'categoria', x: 105.1, y: 274.4, dx: -11, dy: -6, size: 8, bold: false },
+    { key: 'categoria', dataKey: 'categoria', x: 105.1, y: 274.4, dx: -11, dy: -6.5, size: 8, bold: false },
     { key: 'marca', dataKey: 'marca', x: 89.9, y: 261.1, dx: -6, dy: -7, size: 8, bold: false },
     { key: 'modelo', dataKey: 'modelo', x: 96.8, y: 246.8, dx: -7, dy: -7, size: 8, bold: false },
     { key: 'color', dataKey: 'color', x: 88.4, y: 233.2, dx: -5, dy: -6, size: 8, bold: false },
@@ -243,6 +243,54 @@ function limpiarEtiquetaRegistral(valor = '') {
         limpio = limpio.replace(regex, '');
     });
     return limpio.trim();
+}
+
+function buscarArchivoFirma(sede) {
+    if (!sede) return null;
+    let cleanSede = safe(sede).toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]/g, '');
+
+    const firmasDir = path.join(__dirname, 'tarjeta', 'firmas');
+    if (!fs.existsSync(firmasDir)) {
+        console.error(`[FIRMA] ❌ Carpeta no existe: ${firmasDir}`);
+        return null;
+    }
+
+    const files = fs.readdirSync(firmasDir);
+
+    // Mapeo manual para typos conocidos en la carpeta de firmas
+    if (cleanSede === 'tarapoto') cleanSede = 'taraporo';
+    if (cleanSede === 'pucallpa') cleanSede = 'pucullpa';
+    if (cleanSede === 'huanuco') cleanSede = 'huanuco'; // 'frima de huanuco.jpg'
+
+    // 1. Intentar coincidencia exacta o cercana con el nombre limpio de la sede
+    let bestMatch = files.find(f => {
+        const cleanFile = f.toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]/g, '');
+        // Buscar que coincida de forma prioritaria con la firma simple (sin números adicionales como 2, 3, etc.)
+        return cleanFile.includes(cleanSede) && !cleanFile.includes(cleanSede + '2') && !cleanFile.includes(cleanSede + '3') && !cleanFile.includes(cleanSede + '4') && !cleanFile.includes(cleanSede + '6') && !cleanFile.includes(cleanSede + '7');
+    });
+
+    // 2. Si no hay coincidencia simple, buscar cualquier coincidencia con la sede
+    if (!bestMatch) {
+        bestMatch = files.find(f => {
+            const cleanFile = f.toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]/g, '');
+            return cleanFile.includes(cleanSede);
+        });
+    }
+
+    if (bestMatch) {
+        const matchedPath = path.join(firmasDir, bestMatch);
+        console.log(`[FIRMA] ✅ Sede '${sede}' mapeada a firma: '${bestMatch}'`);
+        return matchedPath;
+    }
+
+    console.log(`[FIRMA] ⚠️ No se encontró firma para la sede: '${sede}'`);
+    return null;
 }
 
 function valorCompleto(datos, dataKey) {
@@ -949,6 +997,32 @@ for (const field of TIVE_COMPLETO_FIELDS) {
         paddingheight: 0,
     }));
     page.drawImage(pdf417Img, TIVE_COMPLETO_TECH_CODE);
+
+    // --- INSERCIÓN DE FIRMA REGISTRAL SEGÚN LA SEDE ---
+    try {
+        const sedeInput = datosCompletos.sedeLimpia || datosCompletos.sede;
+        const firmaPath = buscarArchivoFirma(sedeInput);
+        if (firmaPath && fs.existsSync(firmaPath)) {
+            const signatureImgBytes = fs.readFileSync(firmaPath);
+            let embeddedImg;
+            if (firmaPath.toLowerCase().endsWith('.png')) {
+                embeddedImg = await pdfDoc.embedPng(signatureImgBytes);
+            } else {
+                embeddedImg = await pdfDoc.embedJpg(signatureImgBytes);
+            }
+            
+            // Posición: abajo lado derecho, donde está el espacio de la firma / QR
+            page.drawImage(embeddedImg, {
+                x: 350,
+                y: 13,
+                width: 100,
+                height: 50
+            });
+            console.log(`[TIVE COMPLETO] ✍️ Firma de la sede '${sedeInput}' incrustada exitosamente en el PDF.`);
+        }
+    } catch (err) {
+        console.error(`[TIVE COMPLETO] ❌ Error incrustando firma de la sede:`, err.message);
+    }
 
     const outBytes = await pdfDoc.save();
     const finalPath = path.join(uploadDir, `${hash}.pdf`);
