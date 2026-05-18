@@ -118,7 +118,7 @@ const QR_X = parseFloat(process.env.QR_X) || 12.2;
 const QR_Y = parseFloat(process.env.QR_Y) || 10.2;
 const QR_SIZE = parseFloat(process.env.QR_SIZE) || 72;
 const COMPLETE_TEMPLATE_NAME = 'BASE ELECTRONICA TIVE PDF SIN RELLENO PDF.pdf';
-const TIVE_COMPLETO_BODY_CODE = { x: 90, y: 323, width: 80, height: 18 };
+const TIVE_COMPLETO_BODY_CODE = { x: 85, y: 323, width: 80, height: 18 };
 const TIVE_COMPLETO_TECH_CODE = { x: 60, y: 15, width: 260, height: 40 };
 
 // ✅ CAMBIO: Carpeta actualizada a /servicio/verCertificado/Tive/
