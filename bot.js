@@ -1002,9 +1002,15 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificat
     console.log(`[TIVE COMPLETO] 🎨 Generando PDF completo para: ${safe(datos.placa)}`);
 
     const templatePath = getTemplatePath(COMPLETE_TEMPLATE_NAME);
-    const pdfDoc = await PDFDocument.load(fs.readFileSync(templatePath));
-    const page = pdfDoc.getPages()[0];
-    const { width, height } = page.getSize();
+    const templateBytes = fs.readFileSync(templatePath);
+    const templateDoc = await PDFDocument.load(templateBytes);
+    const templatePage = templateDoc.getPages()[0];
+    const { width, height } = templatePage.getSize();
+
+    const pdfDoc = await PDFDocument.create();
+    const [templateBackground] = await pdfDoc.embedPdf(templateBytes, [0]);
+    const page = pdfDoc.addPage([width, height]);
+    page.drawPage(templateBackground, { x: 0, y: 0, width, height });
 
     const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -1027,6 +1033,7 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificat
     pdfDoc.setCreator('TIVE');
     pdfDoc.setProducer('TIVE');
 
+    const drawnFields = [];
     for (const field of TIVE_COMPLETO_FIELDS) {
         const value = valorCompleto(datosCompletos, field.dataKey);
         if (!value) continue;
@@ -1037,7 +1044,9 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificat
             font: field.bold ? fontBold : fontRegular,
             color: ['zona_registral', 'sede_registral'].includes(field.key.trim()) ? gris : negro,
         });
+        drawnFields.push(`${field.dataKey}=${value}`);
     }
+    console.log(`[TIVE COMPLETO] 🖨️ Campos impresos (${drawnFields.length}): ${drawnFields.join(' | ')}`);
 
     const qrHeaderText = safe(datosCompletos.placa) || 'SIN-PLACA';
     const hash = verificationHash || generarHashVerificacion(null, datosCompletos);
