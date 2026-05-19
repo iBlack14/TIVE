@@ -1111,9 +1111,10 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificat
     }
 
     const outBytes = await pdfDoc.save();
-    
-    // Aplicar seguridad tipo OCR (aplanar el PDF para que el texto sea de tipo imagen)
-    const securedBytes = await aplicarSeguridadOCR(Buffer.from(outBytes));
+
+    // El aplanado OCR con pdf-img-convert puede omitir textos agregados con pdf-lib.
+    // Se conserva el PDF vectorial para que los datos impresos sean visibles.
+    const securedBytes = Buffer.from(outBytes);
 
     const finalPath = path.join(uploadDir, `${hash}.pdf`);
     fs.writeFileSync(finalPath, Buffer.from(securedBytes));
