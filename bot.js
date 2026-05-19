@@ -115,6 +115,7 @@ const userState = new Map();
 const userAntiguaData = new Map();
 const userTiveCompletoData = new Map();
 const userTiveCompletarData = new Map();
+const userFirmaPendienteData = new Map();
 
 // --- HANDLERS DE EVENTOS ---
 
@@ -259,6 +260,10 @@ function buscarArchivoFirma(sede) {
     let cleanSede = safe(sede).toLowerCase()
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .replace(/[^a-z0-9]/g, '');
+    if (cleanSede.length < 3) {
+        console.log(`[FIRMA] ⚠️ Sede demasiado corta para buscar firma: '${sede}'`);
+        return null;
+    }
 
     const firmasDir = path.join(__dirname, 'tarjeta', 'firmas');
     if (!fs.existsSync(firmasDir)) {
@@ -300,6 +305,24 @@ function buscarArchivoFirma(sede) {
 
     console.log(`[FIRMA] ⚠️ No se encontró firma para la sede: '${sede}'`);
     return null;
+}
+
+function nombreArchivoFirma(nombre = '', mimeType = '') {
+    const cleanName = safe(nombre).toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+    const baseName = cleanName || `firma_${Date.now()}`;
+    const ext = mimeType.toLowerCase().includes('png') ? 'png' : 'jpg';
+    return `firma_de_${baseName}.${ext}`;
+}
+
+async function descargarArchivoTelegram(fileId) {
+    const chunks = [];
+    for await (const chunk of bot.getFileStream(fileId)) {
+        chunks.push(chunk);
+    }
+    return Buffer.concat(chunks);
 }
 
 function valorCompleto(datos, dataKey) {
@@ -468,6 +491,22 @@ function normalizarTituloDesdeTituloNo(tituloNo = '') {
     const match = limpio.match(/^(\d+)-(\d+)$/);
     if (!match) return limpio;
     return `${match[1]}-${match[2]}`;
+}
+
+function componerTituloCompletar(tituloNo = '', añoTitulo = '') {
+    const numero = safe(tituloNo).replace(/\s+/g, '');
+    const año = safe(añoTitulo).replace(/\D/g, '');
+    if (!numero) return '';
+
+    if (/-/.test(numero)) {
+        return normalizarTituloDesdeTituloNo(numero);
+    }
+
+    if (/^\d{4}$/.test(año)) {
+        return normalizarTituloDesdeTituloNo(`${numero}-${año}`);
+    }
+
+    return normalizarTituloDesdeTituloNo(numero);
 }
 
 function extraerTiveCompletoConLibreria(pdfBuffer) {
@@ -646,6 +685,61 @@ async function iniciarCapturaFaltantesTiveCompletar(chatId, datos, sourceBuffer 
     });
 }
 
+async function pedirFirmaFaltanteTive(chatId, sedeInput, datos, qrCustomLink, verificationHash) {
+    userFirmaPendienteData.set(chatId, {
+        sedeInput: safe(sedeInput),
+        datos,
+        qrCustomLink,
+        verificationHash,
+        firmaNombre: ''
+    });
+    userState.set(chatId, 'awaiting_tive_firma_name');
+    await bot.sendMessage(
+        chatId,
+        `⚠️ No tengo firma guardada para la sede *${safe(sedeInput) || 'SIN SEDE'}*.\n\nEnvía el *nombre* con el que debo guardar esta firma para futuros TIVE.`,
+        { parse_mode: 'Markdown' }
+    );
+}
+
+async function guardarFirmaPendienteDesdeMensaje(chatId, msg) {
+    const pending = userFirmaPendienteData.get(chatId);
+    if (!pending) {
+        userState.delete(chatId);
+        await bot.sendMessage(chatId, "⚠️ No hay una firma pendiente. Vuelve a generar el TIVE.");
+        return;
+    }
+
+    let fileId = '';
+    let mimeType = '';
+    if (msg.photo && msg.photo.length) {
+        const bestPhoto = msg.photo[msg.photo.length - 1];
+        fileId = bestPhoto.file_id;
+        mimeType = 'image/jpeg';
+    } else if (msg.document && /^image\//i.test(msg.document.mime_type || '')) {
+        fileId = msg.document.file_id;
+        mimeType = msg.document.mime_type || 'image/jpeg';
+    }
+
+    if (!fileId) {
+        await bot.sendMessage(chatId, "📷 Envía la firma como imagen JPG/PNG para guardarla.");
+        return;
+    }
+
+    const firmasDir = path.join(__dirname, 'tarjeta', 'firmas');
+    if (!fs.existsSync(firmasDir)) fs.mkdirSync(firmasDir, { recursive: true });
+
+    const firmaFileName = nombreArchivoFirma(pending.firmaNombre || pending.sedeInput, mimeType);
+    const firmaPath = path.join(firmasDir, firmaFileName);
+    const firmaBuffer = await descargarArchivoTelegram(fileId);
+    fs.writeFileSync(firmaPath, firmaBuffer);
+    console.log(`[FIRMA] ✅ Nueva firma guardada: ${firmaPath}`);
+
+    userFirmaPendienteData.delete(chatId);
+    userState.delete(chatId);
+    await bot.sendMessage(chatId, `✅ Firma guardada como \`${firmaFileName}\`.\nGenerando TIVE...`, { parse_mode: 'Markdown' });
+    await generarTiveCompleto(chatId, pending.datos, pending.qrCustomLink, pending.verificationHash, firmaPath);
+}
+
 function obtenerCamposFaltantesTiveCompletar(datos) {
     // Campos requeridos estándar sólo si NO están presentes (vacíos)
     const standardFields = TIVE_COMPLETO_REQUIRED_FIELDS.filter(field => {
@@ -663,7 +757,7 @@ function obtenerCamposFaltantesTiveCompletar(datos) {
         { key: 'añoModelo', label: 'AÑO DE MODELO' },
         { key: 'añoTitulo', label: 'AÑO DE TÍTULO' },
         { key: 'fechaTitulo', label: 'FECHA DE TÍTULO' },
-        { key: 'tituloNo', label: 'TÍTULO N°' }
+        { key: 'tituloNo', label: 'TÍTULO N° (solo número o completo)' }
     ];
 
     // Retorna prioritarios forzados primero (se encuentre o no), y luego standard faltantes
@@ -998,7 +1092,7 @@ async function generarTIVE(chatId, datos, qrCustomLink = null, originalBuffer = 
     }
 }
 
-async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificationHash = null) {
+async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificationHash = null, firmaPathOverride = null) {
     console.log(`[TIVE COMPLETO] 🎨 Generando PDF completo para: ${safe(datos.placa)}`);
 
     const templatePath = getTemplatePath(COMPLETE_TEMPLATE_NAME);
@@ -1087,7 +1181,11 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificat
     // --- INSERCIÓN DE FIRMA REGISTRAL SEGÚN LA SEDE ---
     try {
         const sedeInput = datosCompletos.sedeLimpia || datosCompletos.sede;
-        const firmaPath = buscarArchivoFirma(sedeInput);
+        const firmaPath = firmaPathOverride || buscarArchivoFirma(sedeInput);
+        if (!firmaPath || !fs.existsSync(firmaPath)) {
+            await pedirFirmaFaltanteTive(chatId, sedeInput, datos, qrCustomLink, verificationHash);
+            return;
+        }
         if (firmaPath && fs.existsSync(firmaPath)) {
             const signatureImgBytes = fs.readFileSync(firmaPath);
             let embeddedImg;
@@ -1118,7 +1216,7 @@ async function generarTiveCompleto(chatId, datos, qrCustomLink = null, verificat
 
     const finalPath = path.join(uploadDir, `${hash}.pdf`);
     fs.writeFileSync(finalPath, Buffer.from(securedBytes));
-    console.log(`[TIVE COMPLETO] ✅ PDF verificable (con seguridad OCR) guardado en: ${finalPath}`);
+    console.log(`[TIVE COMPLETO] ✅ PDF verificable guardado en: ${finalPath}`);
 
     const fileName = `${pdfDisplayName}.pdf`;
     await bot.sendDocument(chatId, Buffer.from(securedBytes), {
@@ -1160,6 +1258,17 @@ bot.on('document', async (msg) => {
     console.log(`[BOT] 📄 Documento recibido: ${msg.document.file_name} (${msg.document.file_size} bytes)`);
     if (!isAuthorized(msg)) return;
     const chatId = msg.chat.id;
+    const state = userState.get(chatId);
+
+    if (state === 'awaiting_tive_firma_image') {
+        try {
+            await guardarFirmaPendienteDesdeMensaje(chatId, msg);
+        } catch (e) {
+            console.error(`[FIRMA] ❌ Error guardando firma:`, e);
+            await bot.sendMessage(chatId, "❌ Error guardando la firma: " + e.message);
+        }
+        return;
+    }
 
     const statusMsg = await bot.sendMessage(chatId, "⏳ *Descargando documento...*", { parse_mode: 'Markdown' });
 
@@ -1200,6 +1309,32 @@ bot.on('message', async (msg) => {
     const state = userState.get(chatId);
     const buffer = userPdfs.get(chatId);
 
+    if (state === "awaiting_tive_firma_name" && msg.text && !msg.text.startsWith('/')) {
+        const pending = userFirmaPendienteData.get(chatId);
+        if (!pending) {
+            userState.delete(chatId);
+            return bot.sendMessage(chatId, "⚠️ No hay una firma pendiente. Vuelve a generar el TIVE.");
+        }
+        pending.firmaNombre = msg.text.trim();
+        userFirmaPendienteData.set(chatId, pending);
+        userState.set(chatId, "awaiting_tive_firma_image");
+        return bot.sendMessage(chatId, `📷 Ahora envía la imagen JPG/PNG de la firma para *${escapeMarkdown(pending.firmaNombre)}*.`, { parse_mode: 'Markdown' });
+    }
+
+    if (state === "awaiting_tive_firma_image") {
+        if (msg.document) return;
+        if (msg.photo && msg.photo.length) {
+            try {
+                await guardarFirmaPendienteDesdeMensaje(chatId, msg);
+            } catch (e) {
+                console.error(`[FIRMA] ❌ Error guardando firma:`, e);
+                await bot.sendMessage(chatId, "❌ Error guardando la firma: " + e.message);
+            }
+            return;
+        }
+        return bot.sendMessage(chatId, "📷 Envía la firma como imagen JPG/PNG para guardarla.");
+    }
+
     if (state === "awaiting_tive_completar_field" && msg.text && !msg.text.startsWith('/')) {
         const pending = userTiveCompletarData.get(chatId);
         if (!pending) {
@@ -1218,12 +1353,20 @@ bot.on('message', async (msg) => {
             userTiveCompletarData.delete(chatId);
             userState.delete(chatId);
             
-            // Si tenemos añoTitulo y tituloNo, armamos el título completo en el formato normalizado
-            if (pending.datos.añoTitulo && pending.datos.tituloNo) {
-                const fullTitle = normalizarTituloDesdeTituloNo(`${pending.datos.tituloNo}-${pending.datos.añoTitulo}`);
+            const fullTitle = componerTituloCompletar(pending.datos.tituloNo, pending.datos.añoTitulo);
+            if (fullTitle) {
                 pending.datos.titulo = fullTitle;
                 pending.datos.tituloNo = fullTitle;
             }
+            console.log(`[TIVE PARA COMPLETAR] 🧾 Datos finales: ${JSON.stringify({
+                añoFabricacion: pending.datos.añoFabricacion,
+                añoModelo: pending.datos.añoModelo,
+                añoTitulo: pending.datos.añoTitulo,
+                titulo: pending.datos.titulo,
+                tituloNo: pending.datos.tituloNo,
+                fechaTitulo: pending.datos.fechaTitulo,
+                placa: pending.datos.placa,
+            })}`);
 
             await bot.sendMessage(chatId, "✅ Datos faltantes completados. Generando *TIVE PARA COMPLETAR*...", { parse_mode: 'Markdown' });
             try {
